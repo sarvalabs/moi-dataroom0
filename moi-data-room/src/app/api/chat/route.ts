@@ -22,109 +22,116 @@ FORMATTING RULES — your response will be rendered as Markdown in a chat widget
 ---`;
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { messages } = body as { messages: { role: string; content: string }[] };
+  try {
+    const body = await request.json();
+    const { messages } = body as { messages: { role: string; content: string }[] };
 
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json(
-      { error: "messages array is required" },
-      { status: 400 }
-    );
-  }
-
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
-  const lastContent = lastUser?.content?.trim();
-  if (!lastContent) {
-    return NextResponse.json(
-      { error: "No user message found" },
-      { status: 400 }
-    );
-  }
-
-  let embedding: number[] = [];
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey && !openaiKey.startsWith("your_")) {
-    try {
-      const openai = new OpenAI({ apiKey: openaiKey });
-      const res = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: lastContent,
-      });
-      embedding = res.data[0].embedding;
-    } catch {
-      // Continue without embeddings if OpenAI call fails
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: "messages array is required" },
+        { status: 400 }
+      );
     }
-  }
 
-  let chunks: string[] = [];
-  if (embedding.length > 0) {
-    try {
-      const admin = createAdminClient();
-      const { data: rows } = await admin.rpc("match_document_embeddings", {
-        query_embedding: embedding,
-        match_count: 5,
-      });
-      if (Array.isArray(rows)) {
-        chunks = rows.map((r: { content?: string }) => r.content ?? "").filter(Boolean);
-      }
-    } catch {
-      // RPC may not exist yet; continue without RAG context
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastContent = lastUser?.content?.trim();
+    if (!lastContent) {
+      return NextResponse.json(
+        { error: "No user message found" },
+        { status: 400 }
+      );
     }
-  }
 
-  const systemContent = SYSTEM_PROMPT.replace(
-    "{chunks}",
-    chunks.length > 0 ? chunks.join("\n\n") : "(No relevant excerpts found. Rely on your knowledge of MOI Protocol.)"
-  );
-
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!anthropicKey || anthropicKey.startsWith("your_")) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 503 }
-    );
-  }
-
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
-  const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    system: systemContent,
-    messages: messages.map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content,
-    })),
-  });
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
+    let embedding: number[] = [];
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey && !openaiKey.startsWith("your_")) {
       try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            "delta" in event &&
-            event.delta &&
-            typeof event.delta === "object" &&
-            "type" in event.delta &&
-            event.delta.type === "text_delta" &&
-            "text" in event.delta
-          ) {
-            const text = (event.delta as { text?: string }).text ?? "";
-            if (text) controller.enqueue(encoder.encode(text));
-          }
-        }
-        controller.close();
-      } catch (err) {
-        controller.error(err);
+        const openai = new OpenAI({ apiKey: openaiKey });
+        const res = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: lastContent,
+        });
+        embedding = res.data[0].embedding;
+      } catch (e) {
+        console.error("OpenAI embedding error:", e);
       }
-    },
-  });
+    }
 
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
-    },
-  });
+    let chunks: string[] = [];
+    if (embedding.length > 0) {
+      try {
+        const admin = createAdminClient();
+        const { data: rows } = await admin.rpc("match_document_embeddings", {
+          query_embedding: embedding,
+          match_count: 5,
+        });
+        if (Array.isArray(rows)) {
+          chunks = rows.map((r: { content?: string }) => r.content ?? "").filter(Boolean);
+        }
+      } catch (e) {
+        console.error("Supabase RPC error:", e);
+      }
+    }
+
+    const systemContent = SYSTEM_PROMPT.replace(
+      "{chunks}",
+      chunks.length > 0 ? chunks.join("\n\n") : "(No relevant excerpts found. Rely on your knowledge of MOI Protocol.)"
+    );
+
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey || anthropicKey.startsWith("your_")) {
+      return NextResponse.json(
+        { error: "ANTHROPIC_API_KEY is not configured" },
+        { status: 503 }
+      );
+    }
+
+    const anthropic = new Anthropic({ apiKey: anthropicKey });
+    const stream = anthropic.messages.stream({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      system: systemContent,
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.content,
+      })),
+    });
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              "delta" in event &&
+              event.delta &&
+              typeof event.delta === "object" &&
+              "type" in event.delta &&
+              event.delta.type === "text_delta" &&
+              "text" in event.delta
+            ) {
+              const text = (event.delta as { text?: string }).text ?? "";
+              if (text) controller.enqueue(encoder.encode(text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          console.error("Anthropic stream error:", err);
+          controller.error(err);
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+      },
+    });
+  } catch (err) {
+    console.error("Chat route error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
