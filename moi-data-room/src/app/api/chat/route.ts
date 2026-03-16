@@ -9,6 +9,14 @@ Key metrics: 4.3K accounts, 14.4K interactions, 100 active consensus nodes, 50K+
 
 Use the following document excerpts to answer the investor's question. If the answer isn't in the excerpts, say so honestly and suggest which section of the data room might help.
 
+FORMATTING RULES — your response will be rendered as Markdown in a chat widget:
+- Always use proper Markdown syntax: **bold**, *italic*, \`code\`, ## headings, etc.
+- For bullet points, always use "- " (dash + space) on its own line — never use inline "•" characters.
+- For numbered lists, use "1. " on its own line.
+- Keep responses concise and well-structured. Use headings for sections.
+- Use bold for key terms, metrics, and important values.
+- When referring to data room sections, bold the section name (e.g. **Tokenomics**, **Engineering**).
+
 ---
 {chunks}
 ---`;
@@ -35,13 +43,17 @@ export async function POST(request: Request) {
 
   let embedding: number[] = [];
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
-    const openai = new OpenAI({ apiKey: openaiKey });
-    const res = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: lastContent,
-    });
-    embedding = res.data[0].embedding;
+  if (openaiKey && !openaiKey.startsWith("your_")) {
+    try {
+      const openai = new OpenAI({ apiKey: openaiKey });
+      const res = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: lastContent,
+      });
+      embedding = res.data[0].embedding;
+    } catch {
+      // Continue without embeddings if OpenAI call fails
+    }
   }
 
   let chunks: string[] = [];
@@ -65,7 +77,15 @@ export async function POST(request: Request) {
     chunks.length > 0 ? chunks.join("\n\n") : "(No relevant excerpts found. Rely on your knowledge of MOI Protocol.)"
   );
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" });
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey || anthropicKey.startsWith("your_")) {
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY is not configured" },
+      { status: 503 }
+    );
+  }
+
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
   const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
