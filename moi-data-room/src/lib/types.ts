@@ -1,0 +1,62 @@
+export type DocumentCategory =
+  | "overview"
+  | "engineering"
+  | "business"
+  | "tokenomics"
+  | "research"
+  | "usecases";
+
+export type DocumentStatus = "published" | "draft" | "restricted";
+
+export type UserRole = "admin" | "investor" | "analyst" | "pending";
+
+export interface Document {
+  id: string;
+  title: string;
+  description: string | null;
+  category: DocumentCategory;
+  file_url: string | null;
+  file_type: string;
+  status: DocumentStatus;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+  view_count?: number;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: UserRole;
+  full_name: string | null;
+  company: string | null;
+  access_granted: boolean;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AnalyticsEvent {
+  id: string;
+  document_id: string;
+  user_id: string | null;
+  action: "view" | "download";
+  viewed_at: string;
+}
+
+export interface AnalyticsSummary {
+  totalViews: number;
+  uniqueInvestors: number;
+  avgSession?: number;
+  downloads: number;
+}
+
+export interface TopDocumentView {
+  document_id: string;
+  title: string;
+  view_count: number;
+}
