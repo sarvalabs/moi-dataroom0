@@ -52,7 +52,7 @@ export function UploadModal({
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.set("file", file);
+      if (file) formData.set("file", file);
       const uploadRes = await fetch("/api/upload", {
         method: "POST",
         body: formData,
