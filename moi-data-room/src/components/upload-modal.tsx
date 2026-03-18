@@ -72,7 +72,7 @@ export function UploadModal({
           category,
           description: description.trim() || null,
           file_url: path,
-          file_type: fileTypeFromMime(file.type),
+          file_type: file ? fileTypeFromMime(file.type) : "PDF",
         }),
       });
       if (!docRes.ok) {
