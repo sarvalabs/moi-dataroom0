@@ -6,6 +6,7 @@ import type { DocumentCategory } from "@/lib/constants";
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "overview", label: "Overview" },
+  { value: "contextual_compute", label: "Contextual Compute" },
   { value: "engineering", label: "Engineering" },
   { value: "business", label: "Business & GTM" },
   { value: "tokenomics", label: "Tokenomics" },

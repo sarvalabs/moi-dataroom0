@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/lib/constants";
+import { NAV_ITEMS, type NavItem } from "@/lib/constants";
 
 function SidebarItem({
   item,
   active,
   collapsed,
 }: {
-  item: (typeof NAV_ITEMS)[number];
+  item: NavItem;
   active: boolean;
   collapsed: boolean;
 }) {
@@ -80,12 +80,137 @@ function SidebarItem({
   );
 }
 
+function allChildHrefs(item: NavItem): string[] {
+  const hrefs = [item.href];
+  if (item.children) {
+    for (const child of item.children) {
+      hrefs.push(...allChildHrefs(child));
+    }
+  }
+  return hrefs;
+}
+
+function SidebarGroup({
+  item,
+  pathname,
+  collapsed,
+}: {
+  item: NavItem;
+  pathname: string;
+  collapsed: boolean;
+}) {
+  const isChildActive = item.children?.some((c) => pathname === c.href) ?? false;
+  const isSelfActive = pathname === item.href;
+  const [expanded, setExpanded] = useState(isSelfActive || isChildActive);
+  const [hov, setHov] = useState(false);
+
+  return (
+    <div>
+      <div
+        onMouseEnter={() => setHov(true)}
+        onMouseLeave={() => setHov(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: collapsed ? "10px 12px" : "9px 14px",
+          borderRadius: 10,
+          cursor: "pointer",
+          background: isSelfActive
+            ? "var(--accent-dim)"
+            : hov
+              ? "rgba(255,255,255,0.03)"
+              : "transparent",
+          color: isSelfActive || isChildActive
+            ? "var(--accent)"
+            : hov
+              ? "var(--text)"
+              : "var(--text-dim)",
+          transition: "all 0.15s ease",
+          position: "relative",
+          justifyContent: collapsed ? "center" : "flex-start",
+        }}
+      >
+        {isSelfActive && (
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 3,
+              height: 20,
+              borderRadius: 2,
+              background: "var(--accent)",
+            }}
+          />
+        )}
+        <Link
+          href={item.href}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flex: 1,
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <span style={{ fontSize: 16, flexShrink: 0, width: 20, textAlign: "center" }}>
+            {item.icon}
+          </span>
+          {!collapsed && (
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: isSelfActive ? 600 : 500,
+                whiteSpace: "nowrap",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {item.label}
+            </span>
+          )}
+        </Link>
+        {!collapsed && item.children && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "inherit",
+              padding: "2px 4px",
+              fontSize: 10,
+              opacity: 0.6,
+              transition: "transform 0.2s ease",
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+            }}
+          >
+            ▶
+          </button>
+        )}
+      </div>
+
+      {!collapsed && expanded && item.children && (
+        <div style={{ paddingLeft: 18, marginTop: 2 }}>
+          {item.children.map((child) => (
+            <SidebarItem
+              key={child.id}
+              item={child}
+              active={pathname === child.href}
+              collapsed={false}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-
-  const activeId =
-    NAV_ITEMS.find((item) => pathname === item.href)?.id ?? "home";
 
   return (
     <div
@@ -116,23 +241,17 @@ export function Sidebar() {
         }}
         onClick={() => setCollapsed(!collapsed)}
       >
-        <div
+        <img
+          src="/moi-logo.jpeg"
+          alt="MOI"
           style={{
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: "linear-gradient(135deg, var(--accent), #9B81FF)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 800,
-            color: "#fff",
-            fontSize: 14,
             flexShrink: 0,
+            objectFit: "cover",
           }}
-        >
-          M
-        </div>
+        />
         {!collapsed && (
           <span
             style={{
@@ -166,14 +285,23 @@ export function Sidebar() {
           gap: 2,
         }}
       >
-        {NAV_ITEMS.map((item) => (
-          <SidebarItem
-            key={item.id}
-            item={item}
-            active={activeId === item.id}
-            collapsed={collapsed}
-          />
-        ))}
+        {NAV_ITEMS.map((item) =>
+          item.children && item.children.length > 0 ? (
+            <SidebarGroup
+              key={item.id}
+              item={item}
+              pathname={pathname}
+              collapsed={collapsed}
+            />
+          ) : (
+            <SidebarItem
+              key={item.id}
+              item={item}
+              active={pathname === item.href}
+              collapsed={collapsed}
+            />
+          )
+        )}
       </div>
     </div>
   );

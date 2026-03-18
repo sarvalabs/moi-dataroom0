@@ -17,6 +17,7 @@ function statusLabel(s: string) {
 
 function categoryLabel(cat: string) {
   if (cat === "overview") return "Overview";
+  if (cat === "contextual_compute") return "Contextual Compute";
   if (cat === "usecases") return "Use Cases";
   return cat.charAt(0).toUpperCase() + cat.slice(1);
 }

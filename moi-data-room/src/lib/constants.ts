@@ -1,5 +1,6 @@
 export type DocumentCategory =
   | "overview"
+  | "contextual_compute"
   | "engineering"
   | "business"
   | "tokenomics"
@@ -23,9 +24,25 @@ export interface AdminDoc {
   uploaded: string;
 }
 
-export const NAV_ITEMS = [
+export interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  href: string;
+  children?: readonly NavItem[];
+}
+
+export const NAV_ITEMS: readonly NavItem[] = [
   { id: "home", label: "Home", icon: "⌂", href: "/home" },
-  { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
+  {
+    id: "contextual_compute",
+    label: "Contextual Compute",
+    icon: "⬡",
+    href: "/contextual-compute",
+    children: [
+      { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
+    ],
+  },
   { id: "business", label: "Business & GTM", icon: "◧", href: "/business" },
   { id: "tokenomics", label: "Tokenomics", icon: "◉", href: "/tokenomics" },
   { id: "research", label: "Research", icon: "◬", href: "/research" },
@@ -46,6 +63,11 @@ export const DOCUMENTS: Record<string, DocumentItem[]> = {
     { title: "Investor One-Pager", desc: "Condensed pitch document covering market opportunity, traction, and funding details.", type: "PDF", date: "2025-11-28", views: 518 },
     { title: "Company Fact Sheet", desc: "Key facts, milestones, team highlights, and partnership ecosystem at a glance.", type: "PDF", date: "2025-11-15", views: 203 },
     { title: "MOI Pitch Deck — Q4 2025", desc: "Full investor presentation with financial projections, roadmap, and competitive analysis.", type: "PPTX", date: "2025-12-10", views: 891 },
+  ],
+  contextual_compute: [
+    { title: "Contextual Compute Whitepaper", desc: "Foundational paper defining contextual compute, interaction-based execution, and MOI's novel approach to decentralized computing.", type: "PDF", date: "2025-11-01", views: 312 },
+    { title: "TESSERACT Architecture Overview", desc: "Deep dive into TESSERACTs — stateful containers that enable context-aware execution on MOI.", type: "PDF", date: "2025-10-15", views: 198 },
+    { title: "Interaction Model Specification", desc: "Formal specification of MOI's interaction-first paradigm vs traditional transaction-based blockchains.", type: "PDF", date: "2025-09-20", views: 145 },
   ],
   engineering: [
     { title: "Yellow Paper — MOI Protocol v2.4", desc: "Formal specification of MOI's execution architecture, consensus mechanism, and state management.", type: "PDF", date: "2025-10-20", views: 156 },

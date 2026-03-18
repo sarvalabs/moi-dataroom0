@@ -30,7 +30,7 @@ create table public.documents (
   id uuid default gen_random_uuid() primary key,
   title text not null,
   description text,
-  category text not null check (category in ('overview', 'engineering', 'business', 'tokenomics', 'research', 'usecases')),
+  category text not null check (category in ('overview', 'contextual_compute', 'engineering', 'business', 'tokenomics', 'research', 'usecases')),
   file_url text,
   file_type text default 'PDF',
   status text default 'published' check (status in ('published', 'draft', 'restricted')),

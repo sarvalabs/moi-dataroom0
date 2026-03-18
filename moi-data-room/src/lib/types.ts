@@ -1,5 +1,6 @@
 export type DocumentCategory =
   | "overview"
+  | "contextual_compute"
   | "engineering"
   | "business"
   | "tokenomics"
