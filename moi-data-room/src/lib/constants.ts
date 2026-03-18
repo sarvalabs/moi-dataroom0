@@ -34,18 +34,11 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "home", label: "Home", icon: "⌂", href: "/home" },
-  {
-    id: "contextual_compute",
-    label: "Contextual Compute",
-    icon: "⬡",
-    href: "/contextual-compute",
-    children: [
-      { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
-    ],
-  },
+  { id: "contextual_compute", label: "Contextual Compute", icon: "⬡", href: "/contextual-compute" },
+  { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
+  { id: "research", label: "Research", icon: "◬", href: "/research" },
   { id: "business", label: "Business & GTM", icon: "◧", href: "/business" },
   { id: "tokenomics", label: "Tokenomics", icon: "◉", href: "/tokenomics" },
-  { id: "research", label: "Research", icon: "◬", href: "/research" },
   { id: "usecases", label: "Use Cases", icon: "◫", href: "/usecases" },
 ] as const;
 

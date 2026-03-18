@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { DocTable } from "@/components/doc-table";
-import { DOCUMENTS } from "@/lib/constants";
 import type { DocumentItem } from "@/lib/constants";
 import type { DocumentCategory } from "@/lib/constants";
 
@@ -31,9 +30,7 @@ export function CategoryDocPage({
   category: DocumentCategory;
   sectionTitle: string;
 }) {
-  const [docs, setDocs] = useState<(DocumentItem & { id?: string })[]>(() =>
-    DOCUMENTS[category]?.map((d) => ({ ...d })) ?? []
-  );
+  const [docs, setDocs] = useState<(DocumentItem & { id?: string })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,17 +39,12 @@ export function CategoryDocPage({
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : [];
-        setDocs(
-          list.length > 0
-            ? list.map(mapApiDocToItem)
-            : DOCUMENTS[category]?.map((d) => ({ ...d })) ?? []
-        );
+        setDocs(Array.isArray(data) ? data.map(mapApiDocToItem) : []);
         setLoading(false);
       })
       .catch(() => {
         if (!cancelled) {
-          setDocs(DOCUMENTS[category]?.map((d) => ({ ...d })) ?? []);
+          setDocs([]);
           setLoading(false);
         }
       });

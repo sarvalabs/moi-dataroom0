@@ -49,18 +49,6 @@ export function UploadModal({
 
   const handleSubmit = async () => {
     setError(null);
-    if (!title.trim()) {
-      setError("Title is required.");
-      return;
-    }
-    if (!category) {
-      setError("Please select a category.");
-      return;
-    }
-    if (!file) {
-      setError("Please select a file.");
-      return;
-    }
     setLoading(true);
     try {
       const formData = new FormData();
@@ -122,7 +110,6 @@ export function UploadModal({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Q1 2026 Financial Projections"
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           />
         </div>
@@ -135,7 +122,7 @@ export function UploadModal({
             onChange={(e) => setCategory(e.target.value as DocumentCategory | "")}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           >
-            <option value="">Select category...</option>
+            <option value=""></option>
             {CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
@@ -150,7 +137,6 @@ export function UploadModal({
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of the document"
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           />
         </div>
@@ -170,10 +156,7 @@ export function UploadModal({
           />
           <div className="mb-2 text-2xl">📎</div>
           <div className="text-[13px] text-text-dim">
-            {file ? file.name : "Drop file here or click to browse"}
-          </div>
-          <div className="mt-1 text-[11px] text-text-muted">
-            PDF, PPTX, DOCX — Max 50MB
+            {file ? file.name : ""}
           </div>
         </div>
 
