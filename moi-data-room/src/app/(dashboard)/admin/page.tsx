@@ -123,10 +123,10 @@ export default function AdminDashboard() {
           <div
             className="grid items-center gap-3 rounded-lg bg-surface-2 px-4 py-2.5"
             style={{
-              gridTemplateColumns: "1fr 120px 100px 80px 140px",
+              gridTemplateColumns: "1fr 120px 100px 100px 80px 140px",
             }}
           >
-            {["Document", "Category", "Status", "Views", "Actions"].map(
+            {["Document", "Category", "Status", "Embeddings", "Views", "Actions"].map(
               (h) => (
                 <div
                   key={h}

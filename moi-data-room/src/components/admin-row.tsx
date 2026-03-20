@@ -21,6 +21,20 @@ function statusVariant(s: string) {
   return "red" as const;
 }
 
+function embeddingVariant(s: string) {
+  if (s === "completed") return "green" as const;
+  if (s === "processing") return "amber" as const;
+  if (s === "failed") return "red" as const;
+  return "amber" as const; // pending
+}
+
+function embeddingLabel(s: string) {
+  if (s === "completed") return "Indexed";
+  if (s === "processing") return "Indexing…";
+  if (s === "failed") return "Index Failed";
+  return "Pending";
+}
+
 function statusLabel(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -149,7 +163,31 @@ export function AdminRow({
   const [doc, setDoc] = useState(initialDoc);
   const [hov, setHov] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
   const views = doc.view_count ?? 0;
+
+  const handleReindex = async () => {
+    setReindexing(true);
+    setDoc((prev) => ({ ...prev, embedding_status: "processing" as const, embedding_error: null }));
+    try {
+      const res = await fetch("/api/documents/reembed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ documentId: doc.id }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setDoc((prev) => ({ ...prev, embedding_status: "failed" as const, embedding_error: data.error }));
+      } else {
+        setDoc((prev) => ({ ...prev, embedding_status: "completed" as const, embedding_error: null }));
+      }
+    } catch {
+      setDoc((prev) => ({ ...prev, embedding_status: "failed" as const, embedding_error: "Network error" }));
+    } finally {
+      setReindexing(false);
+    }
+  };
 
   return (
     <>
@@ -158,7 +196,7 @@ export function AdminRow({
         onMouseLeave={() => setHov(false)}
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 120px 100px 80px 140px",
+          gridTemplateColumns: "1fr 120px 100px 100px 80px 140px",
           gap: 12,
           padding: "14px 16px",
           borderRadius: 8,
@@ -178,8 +216,21 @@ export function AdminRow({
             {statusLabel(doc.status)}
           </Pill>
         </div>
+        <div title={doc.embedding_error ?? undefined}>
+          <Pill variant={embeddingVariant(doc.embedding_status)}>
+            {embeddingLabel(doc.embedding_status)}
+          </Pill>
+        </div>
         <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{views}</div>
         <div style={{ display: "flex", gap: 6 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReindex}
+            disabled={reindexing}
+          >
+            {reindexing ? "Indexing…" : "Re-index"}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)}>
             Edit
           </Button>

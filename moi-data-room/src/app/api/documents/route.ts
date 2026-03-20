@@ -59,23 +59,49 @@ async function embedDocument(
   fileType: string
 ) {
   const admin = createAdminClient();
-  const { data: fileData, error: downloadError } = await admin.storage
-    .from("investor-docs")
-    .download(fileUrl);
 
-  if (downloadError || !fileData) {
-    console.error("Failed to download file for embedding:", downloadError?.message);
-    return;
+  // Mark as processing
+  await admin
+    .from("documents")
+    .update({ embedding_status: "processing", embedding_error: null })
+    .eq("id", documentId);
+
+  try {
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from("investor-docs")
+      .download(fileUrl);
+
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download file: ${downloadError?.message ?? "No data returned"}`);
+    }
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const text = await extractText(buffer, fileType);
+
+    if (!text.trim()) {
+      throw new Error("No text could be extracted from the document");
+    }
+
+    const count = await embedAndStore(documentId, text);
+    if (count === 0) {
+      throw new Error("Embedding generated 0 chunks — possible extraction or API issue");
+    }
+
+    // Mark as completed
+    await admin
+      .from("documents")
+      .update({ embedding_status: "completed", embedding_error: null })
+      .eq("id", documentId);
+
+    console.log(`Embedded ${count} chunks for document ${documentId}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown embedding error";
+    console.error("Embedding failed for document", documentId, message);
+
+    // Mark as failed with error details
+    await admin
+      .from("documents")
+      .update({ embedding_status: "failed", embedding_error: message })
+      .eq("id", documentId);
   }
-
-  const buffer = Buffer.from(await fileData.arrayBuffer());
-  const text = await extractText(buffer, fileType);
-
-  if (!text.trim()) {
-    console.warn("No text extracted from document", documentId);
-    return;
-  }
-
-  const count = await embedAndStore(documentId, text);
-  console.log(`Embedded ${count} chunks for document ${documentId}`);
 }

@@ -3,23 +3,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 
-const SYSTEM_PROMPT = `You are an AI assistant for the MOI Protocol investor data room. MOI is a contextual compute network — a blockchain with a novel execution architecture built around interactions (not transactions), TESSERACTs (stateful containers), and the CoCo programming language.
+const SYSTEM_PROMPT = `You are MOI Assistant, an expert on the MOI protocol and its investor data room.
 
-Key metrics: 4.3K accounts, 14.4K interactions, 100 active consensus nodes, 50K+ community, $79M KMOI TVL.
+You answer questions using ONLY the provided context from MOI's official documents. If the context does not contain enough information, say so clearly instead of guessing.
 
-Use the following document excerpts to answer the investor's question. If the answer isn't in the excerpts, say so honestly and suggest which section of the data room might help.
+Style rules:
+- Default to concise answers.
+- For broad intro questions like "What is MOI?", answer in 2 short paragraphs maximum.
+- Start with a plain-English definition in the first sentence.
+- Do not use headings unless the user asks for a detailed breakdown.
+- Do not use more than 3 bullets unless the user explicitly asks for a list.
+- Avoid repeating the same idea in slightly different words.
+- Use simple language first, then add technical detail only if the user asks for it.
+- Lead with what MOI does for participants (people, businesses, AI agents), not internal implementation details like TESSERACTs or CoCo unless the user specifically asks.
+- Prioritize the "why it matters" over the "how it works" unless asked for technical depth.
+- If asked about something outside MOI, politely redirect.
+- Use markdown only when it improves readability.
 
-FORMATTING RULES — your response will be rendered as Markdown in a chat widget:
-- Always use proper Markdown syntax: **bold**, *italic*, \`code\`, ## headings, etc.
-- For bullet points, always use "- " (dash + space) on its own line — never use inline "•" characters.
-- For numbered lists, use "1. " on its own line.
-- Keep responses concise and well-structured. Use headings for sections.
-- Use bold for key terms, metrics, and important values.
-- When referring to data room sections, bold the section name (e.g. **Tokenomics**, **Engineering**).
-
----
-{chunks}
----`;
+Tone:
+- Warm, clear, and confident.
+- Sound like a knowledgeable team member, not a marketing brochure.`;
 
 export async function POST(request: Request) {
   try {
@@ -62,21 +65,24 @@ export async function POST(request: Request) {
       try {
         const admin = createAdminClient();
         const { data: rows } = await admin.rpc("match_document_embeddings", {
-          query_embedding: embedding,
-          match_count: 5,
+          query_embedding: JSON.stringify(embedding),
+          match_count: 8,
         });
         if (Array.isArray(rows)) {
-          chunks = rows.map((r: { content?: string }) => r.content ?? "").filter(Boolean);
+          chunks = rows
+            .filter((r: { similarity?: number }) => (r.similarity ?? 0) >= 0.3)
+            .map((r: { content?: string; document_title?: string }) => {
+              const content = r.content ?? "";
+              if (!content) return "";
+              const label = r.document_title ?? "Unknown Document";
+              return `[Excerpt from: ${label}]\n${content}`;
+            })
+            .filter(Boolean);
         }
       } catch (e) {
         console.error("Supabase RPC error:", e);
       }
     }
-
-    const systemContent = SYSTEM_PROMPT.replace(
-      "{chunks}",
-      chunks.length > 0 ? chunks.join("\n\n") : "(No relevant excerpts found. Rely on your knowledge of MOI Protocol.)"
-    );
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicKey || anthropicKey.startsWith("your_")) {
@@ -86,15 +92,30 @@ export async function POST(request: Request) {
       );
     }
 
+    // Build context from chunks, like the working MOI website
+    const context = chunks.length > 0
+      ? chunks.join("\n\n---\n\n")
+      : "(No relevant excerpts found in the data room documents.)";
+
+    // Inject context into the last user message with <context> tags
+    const recentHistory = messages.slice(-10).map((m: { role: string; content: string }) => ({
+      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: m.content,
+    }));
+
+    // Replace the last user message with context-wrapped version
+    const lastIdx = recentHistory.length - 1;
+    recentHistory[lastIdx] = {
+      role: "user" as const,
+      content: `<context>\n${context}\n</context>\n\nUser question: ${lastContent}`,
+    };
+
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: systemContent,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      messages: recentHistory,
     });
 
     const encoder = new TextEncoder();

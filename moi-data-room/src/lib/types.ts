@@ -11,6 +11,8 @@ export type DocumentStatus = "published" | "draft" | "restricted";
 
 export type UserRole = "admin" | "investor" | "analyst" | "pending";
 
+export type EmbeddingStatus = "pending" | "processing" | "completed" | "failed";
+
 export interface Document {
   id: string;
   title: string;
@@ -19,6 +21,8 @@ export interface Document {
   file_url: string | null;
   file_type: string;
   status: DocumentStatus;
+  embedding_status: EmbeddingStatus;
+  embedding_error: string | null;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;

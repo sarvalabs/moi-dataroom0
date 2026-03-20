@@ -12,7 +12,7 @@ interface ChatMessage {
 const WELCOME_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Welcome to the **MOI Data Room** assistant. Ask me anything about MOI's technology, tokenomics, roadmap, or any document in the data room.",
+    "Welcome to the **MOI Data Room** assistant.\n\nAsk me anything about MOI's technology, tokenomics, roadmap, or any document in the data room.",
 };
 
 /* ------------------------------------------------------------------ */
@@ -20,10 +20,10 @@ const WELCOME_MESSAGE: ChatMessage = {
 /* ------------------------------------------------------------------ */
 
 const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"] = {
-  p: ({ children }) => <p style={{ margin: "6px 0" }}>{children}</p>,
+  p: ({ children }) => <p style={{ margin: "8px 0", lineHeight: 1.65 }}>{children}</p>,
 
   strong: ({ children }) => (
-    <strong style={{ color: "var(--accent-2)", fontWeight: 600 }}>{children}</strong>
+    <strong style={{ color: "#c4b5fd", fontWeight: 600 }}>{children}</strong>
   ),
 
   em: ({ children }) => (
@@ -31,27 +31,59 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
   ),
 
   ul: ({ children }) => (
-    <ul style={{ margin: "6px 0", paddingLeft: 18, listStyleType: "disc" }}>{children}</ul>
+    <ul style={{ margin: "8px 0", paddingLeft: 20, listStyleType: "none" }}>{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol style={{ margin: "6px 0", paddingLeft: 18, listStyleType: "decimal" }}>{children}</ol>
+    <ol style={{ margin: "8px 0", paddingLeft: 20, listStyleType: "decimal" }}>{children}</ol>
   ),
   li: ({ children }) => (
-    <li style={{ margin: "3px 0", lineHeight: 1.5 }}>{children}</li>
+    <li style={{
+      margin: "6px 0",
+      lineHeight: 1.55,
+      position: "relative",
+      paddingLeft: 16,
+    }}>
+      <span style={{
+        position: "absolute",
+        left: 0,
+        top: 2,
+        color: "#7b61ff",
+        fontSize: 10,
+        fontWeight: 700,
+      }}>▸</span>
+      {children}
+    </li>
   ),
 
   h1: ({ children }) => (
-    <h3 style={{ fontSize: 15, fontWeight: 700, margin: "10px 0 4px", color: "var(--text)" }}>
+    <h3 style={{
+      fontSize: 15,
+      fontWeight: 700,
+      margin: "14px 0 6px",
+      color: "#e2d9ff",
+      borderBottom: "1px solid rgba(123,97,255,0.2)",
+      paddingBottom: 4,
+    }}>
       {children}
     </h3>
   ),
   h2: ({ children }) => (
-    <h4 style={{ fontSize: 14, fontWeight: 700, margin: "10px 0 4px", color: "var(--text)" }}>
+    <h4 style={{
+      fontSize: 14,
+      fontWeight: 700,
+      margin: "12px 0 4px",
+      color: "#d4c8ff",
+    }}>
       {children}
     </h4>
   ),
   h3: ({ children }) => (
-    <h5 style={{ fontSize: 13, fontWeight: 700, margin: "8px 0 4px", color: "var(--text)" }}>
+    <h5 style={{
+      fontSize: 13,
+      fontWeight: 700,
+      margin: "10px 0 4px",
+      color: "#c4b5fd",
+    }}>
       {children}
     </h5>
   ),
@@ -62,12 +94,12 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
       return (
         <code
           style={{
-            background: "rgba(123,97,255,0.12)",
-            color: "var(--accent-2)",
-            padding: "1px 5px",
-            borderRadius: 4,
+            background: "rgba(123,97,255,0.15)",
+            color: "#c4b5fd",
+            padding: "2px 6px",
+            borderRadius: 5,
             fontSize: 12,
-            fontFamily: "monospace",
+            fontFamily: "'JetBrains Mono', monospace",
           }}
           {...props}
         >
@@ -79,14 +111,14 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
       <code
         style={{
           display: "block",
-          background: "rgba(0,0,0,0.3)",
-          border: "1px solid var(--border)",
+          background: "rgba(0,0,0,0.35)",
+          border: "1px solid rgba(123,97,255,0.15)",
           borderRadius: 8,
           padding: "10px 12px",
-          margin: "6px 0",
+          margin: "8px 0",
           fontSize: 11.5,
           lineHeight: 1.5,
-          fontFamily: "monospace",
+          fontFamily: "'JetBrains Mono', monospace",
           overflowX: "auto",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
@@ -104,11 +136,14 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
   blockquote: ({ children }) => (
     <blockquote
       style={{
-        borderLeft: "3px solid var(--accent)",
-        paddingLeft: 12,
-        margin: "8px 0",
+        borderLeft: "3px solid #7b61ff",
+        paddingLeft: 14,
+        margin: "10px 0",
         color: "var(--text-dim)",
         fontStyle: "italic",
+        background: "rgba(123,97,255,0.05)",
+        padding: "8px 14px",
+        borderRadius: "0 8px 8px 0",
       }}
     >
       {children}
@@ -119,8 +154,8 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
     <hr
       style={{
         border: "none",
-        borderTop: "1px solid var(--border)",
-        margin: "10px 0",
+        borderTop: "1px solid rgba(123,97,255,0.2)",
+        margin: "12px 0",
       }}
     />
   ),
@@ -131,9 +166,10 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
       target="_blank"
       rel="noopener noreferrer"
       style={{
-        color: "var(--accent-2)",
+        color: "#a78bfa",
         textDecoration: "underline",
         textUnderlineOffset: 2,
+        transition: "color 0.2s",
       }}
     >
       {children}
@@ -141,7 +177,7 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
   ),
 
   table: ({ children }) => (
-    <div style={{ overflowX: "auto", margin: "8px 0" }}>
+    <div style={{ overflowX: "auto", margin: "10px 0", borderRadius: 8, border: "1px solid rgba(123,97,255,0.15)" }}>
       <table
         style={{
           width: "100%",
@@ -157,13 +193,14 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
     <th
       style={{
         textAlign: "left",
-        padding: "6px 8px",
-        borderBottom: "1px solid var(--border-bright)",
+        padding: "8px 10px",
+        borderBottom: "1px solid rgba(123,97,255,0.2)",
         fontWeight: 600,
-        color: "var(--accent-2)",
+        color: "#c4b5fd",
         fontSize: 11,
         textTransform: "uppercase",
-        letterSpacing: "0.03em",
+        letterSpacing: "0.04em",
+        background: "rgba(123,97,255,0.06)",
       }}
     >
       {children}
@@ -172,7 +209,7 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
   td: ({ children }) => (
     <td
       style={{
-        padding: "5px 8px",
+        padding: "6px 10px",
         borderBottom: "1px solid var(--border)",
         color: "var(--text)",
       }}
@@ -188,22 +225,43 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
 
 function AssistantBubble({ content }: { content: string }) {
   return (
-    <div
-      style={{
-        alignSelf: "flex-start",
-        maxWidth: "90%",
-        padding: "10px 14px",
-        borderRadius: 12,
-        background: "var(--surface-2)",
-        color: "var(--text)",
-        fontSize: 13,
-        lineHeight: 1.6,
-        borderBottomLeftRadius: 4,
-      }}
-    >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-        {content}
-      </ReactMarkdown>
+    <div style={{ display: "flex", gap: 10, alignSelf: "flex-start", maxWidth: "92%" }}>
+      {/* Avatar */}
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: "linear-gradient(135deg, #7b61ff 0%, #a78bfa 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          fontSize: 12,
+          color: "#fff",
+          fontWeight: 700,
+          marginTop: 2,
+          boxShadow: "0 2px 8px rgba(123,97,255,0.3)",
+        }}
+      >
+        M
+      </div>
+      {/* Bubble */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderRadius: "4px 14px 14px 14px",
+          background: "linear-gradient(135deg, rgba(30,28,38,0.95) 0%, rgba(26,26,30,0.95) 100%)",
+          border: "1px solid rgba(123,97,255,0.1)",
+          color: "var(--text)",
+          fontSize: 13,
+          lineHeight: 1.6,
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+          {content}
+        </ReactMarkdown>
+      </div>
     </div>
   );
 }
@@ -217,14 +275,14 @@ function UserBubble({ content }: { content: string }) {
     <div
       style={{
         alignSelf: "flex-end",
-        maxWidth: "85%",
-        padding: "10px 14px",
-        borderRadius: 12,
-        background: "var(--accent)",
+        maxWidth: "82%",
+        padding: "10px 16px",
+        borderRadius: "14px 14px 4px 14px",
+        background: "linear-gradient(135deg, #7b61ff 0%, #6d4fef 100%)",
         color: "#fff",
         fontSize: 13,
         lineHeight: 1.6,
-        borderBottomRightRadius: 4,
+        boxShadow: "0 2px 12px rgba(123,97,255,0.25)",
       }}
     >
       {content}
@@ -238,33 +296,62 @@ function UserBubble({ content }: { content: string }) {
 
 function TypingDots() {
   return (
-    <div
-      style={{
-        alignSelf: "flex-start",
-        padding: "12px 16px",
-        borderRadius: 12,
-        background: "var(--surface-2)",
-        borderBottomLeftRadius: 4,
-      }}
-    >
-      <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: "var(--accent)",
-              opacity: 0.5,
-              animation: `dotPulse 1.2s ease-in-out ${i * 0.15}s infinite`,
-            }}
-          />
-        ))}
-      </span>
+    <div style={{ display: "flex", gap: 10, alignSelf: "flex-start" }}>
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: "linear-gradient(135deg, #7b61ff 0%, #a78bfa 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          fontSize: 12,
+          color: "#fff",
+          fontWeight: 700,
+          boxShadow: "0 2px 8px rgba(123,97,255,0.3)",
+        }}
+      >
+        M
+      </div>
+      <div
+        style={{
+          padding: "14px 18px",
+          borderRadius: "4px 14px 14px 14px",
+          background: "linear-gradient(135deg, rgba(30,28,38,0.95) 0%, rgba(26,26,30,0.95) 100%)",
+          border: "1px solid rgba(123,97,255,0.1)",
+        }}
+      >
+        <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #7b61ff, #a78bfa)",
+                opacity: 0.6,
+                animation: `dotPulse 1.2s ease-in-out ${i * 0.15}s infinite`,
+              }}
+            />
+          ))}
+        </span>
+      </div>
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Suggested questions                                                */
+/* ------------------------------------------------------------------ */
+
+const SUGGESTIONS = [
+  "What is MOI?",
+  "How does PoXt consensus work?",
+  "Tell me about tokenomics",
+];
 
 /* ------------------------------------------------------------------ */
 /*  Main ChatBot component                                             */
@@ -294,9 +381,9 @@ export function ChatBot() {
     setLoading(false);
   }, []);
 
-  const send = useCallback(async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || loading) return;
+    const userMsg = text.trim();
     setInput("");
     setError(null);
 
@@ -358,7 +445,11 @@ export function ChatBot() {
       abortRef.current = null;
       setLoading(false);
     }
-  }, [input, loading, messages]);
+  }, [loading, messages]);
+
+  const send = useCallback(() => sendMessage(input), [sendMessage, input]);
+
+  const showSuggestions = messages.length <= 1 && !loading;
 
   return (
     <>
@@ -369,18 +460,18 @@ export function ChatBot() {
           position: "fixed",
           bottom: 24,
           right: 24,
-          width: 52,
-          height: 52,
+          width: 54,
+          height: 54,
           borderRadius: 16,
-          background: "var(--accent)",
+          background: "linear-gradient(135deg, #7b61ff 0%, #6d4fef 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          boxShadow: "0 4px 24px var(--accent-glow)",
+          boxShadow: "0 4px 24px rgba(123,97,255,0.4), 0 0 40px rgba(123,97,255,0.15)",
           zIndex: 999,
-          transition: "all 0.3s ease",
-          transform: open ? "rotate(45deg)" : "none",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: open ? "rotate(135deg) scale(0.9)" : "none",
         }}
       >
         <span style={{ fontSize: 22, color: "#fff", lineHeight: 1 }}>
@@ -397,57 +488,80 @@ export function ChatBot() {
             right: 24,
             width: 420,
             maxWidth: "calc(100vw - 48px)",
-            height: 560,
+            height: 580,
             maxHeight: "calc(100vh - 120px)",
-            borderRadius: 16,
+            borderRadius: 20,
             overflow: "hidden",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
+            background: "#0f0f12",
+            border: "1px solid rgba(123,97,255,0.15)",
             zIndex: 999,
             display: "flex",
             flexDirection: "column",
             boxShadow:
-              "0 16px 64px rgba(0,0,0,0.5), 0 0 40px rgba(123,97,255,0.08)",
-            animation: "fadeSlideUp 0.25s ease",
+              "0 20px 80px rgba(0,0,0,0.6), 0 0 60px rgba(123,97,255,0.08), inset 0 1px 0 rgba(123,97,255,0.1)",
+            animation: "fadeSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
           {/* Header */}
           <div
             style={{
-              padding: "14px 20px",
-              borderBottom: "1px solid var(--border)",
+              padding: "16px 20px",
+              borderBottom: "1px solid rgba(123,97,255,0.1)",
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: 12,
               flexShrink: 0,
-              background: "var(--surface)",
+              background: "linear-gradient(180deg, rgba(123,97,255,0.06) 0%, transparent 100%)",
             }}
           >
             <div
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                background: "#34D399",
-                boxShadow: "0 0 6px rgba(52,211,153,0.5)",
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                background: "linear-gradient(135deg, #7b61ff 0%, #a78bfa 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                color: "#fff",
+                fontWeight: 700,
+                boxShadow: "0 2px 8px rgba(123,97,255,0.3)",
               }}
-            />
-            <div
-              style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", flex: 1 }}
             >
-              MOI Data Room AI
+              M
+            </div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}
+              >
+                MOI Assistant
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, marginTop: 1 }}>
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: "#34D399",
+                  boxShadow: "0 0 6px rgba(52,211,153,0.5)",
+                  display: "inline-block",
+                }} />
+                Online
+              </div>
             </div>
             <div
               style={{
                 fontSize: 10,
-                color: "var(--text-muted)",
-                background: "var(--surface-2)",
-                padding: "3px 8px",
-                borderRadius: 6,
-                letterSpacing: "0.02em",
+                color: "#a78bfa",
+                background: "rgba(123,97,255,0.1)",
+                padding: "4px 10px",
+                borderRadius: 8,
+                letterSpacing: "0.03em",
+                fontWeight: 500,
+                border: "1px solid rgba(123,97,255,0.15)",
               }}
             >
-              Claude
+              Powered by Claude
             </div>
           </div>
 
@@ -460,7 +574,7 @@ export function ChatBot() {
               padding: 16,
               display: "flex",
               flexDirection: "column",
-              gap: 10,
+              gap: 14,
             }}
           >
             {messages.map((msg, i) =>
@@ -470,18 +584,63 @@ export function ChatBot() {
                 <AssistantBubble key={i} content={msg.content} />
               )
             )}
+
+            {/* Suggested questions */}
+            {showSuggestions && (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                marginTop: 4,
+                animation: "fadeSlideUp 0.4s ease",
+              }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2, paddingLeft: 38 }}>
+                  Try asking:
+                </div>
+                {SUGGESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => sendMessage(q)}
+                    style={{
+                      marginLeft: 38,
+                      padding: "8px 14px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(123,97,255,0.2)",
+                      background: "rgba(123,97,255,0.06)",
+                      color: "#c4b5fd",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: "'DM Sans', sans-serif",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(123,97,255,0.12)";
+                      e.currentTarget.style.borderColor = "rgba(123,97,255,0.35)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(123,97,255,0.06)";
+                      e.currentTarget.style.borderColor = "rgba(123,97,255,0.2)";
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {loading && !messages[messages.length - 1]?.content && <TypingDots />}
             {error && (
               <div
                 style={{
                   alignSelf: "flex-start",
+                  marginLeft: 38,
                   padding: "10px 14px",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   background: "rgba(239,68,68,0.08)",
                   border: "1px solid rgba(239,68,68,0.2)",
                   fontSize: 13,
                   color: "#f87171",
-                  borderBottomLeftRadius: 4,
                 }}
               >
                 {error}
@@ -492,12 +651,12 @@ export function ChatBot() {
           {/* Input */}
           <div
             style={{
-              padding: 12,
-              borderTop: "1px solid var(--border)",
+              padding: 14,
+              borderTop: "1px solid rgba(123,97,255,0.1)",
               display: "flex",
               gap: 8,
               flexShrink: 0,
-              background: "var(--surface)",
+              background: "rgba(123,97,255,0.02)",
             }}
           >
             <input
@@ -508,27 +667,35 @@ export function ChatBot() {
               placeholder="Ask about MOI..."
               style={{
                 flex: 1,
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid var(--border)",
-                background: "var(--surface-2)",
+                padding: "11px 16px",
+                borderRadius: 12,
+                border: "1px solid rgba(123,97,255,0.15)",
+                background: "rgba(20,20,24,0.8)",
                 color: "var(--text)",
                 fontSize: 13,
                 outline: "none",
                 fontFamily: "'DM Sans', sans-serif",
-                transition: "border-color 0.2s",
+                transition: "border-color 0.2s, box-shadow 0.2s",
               }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
+              onFocus={(e) => {
+                e.target.style.borderColor = "rgba(123,97,255,0.4)";
+                e.target.style.boxShadow = "0 0 0 3px rgba(123,97,255,0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "rgba(123,97,255,0.15)";
+                e.target.style.boxShadow = "none";
+              }}
             />
             <button
               onClick={loading ? stop : send}
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 border: "none",
-                background: loading ? "#ef4444" : "var(--accent)",
+                background: loading
+                  ? "linear-gradient(135deg, #ef4444, #dc2626)"
+                  : "linear-gradient(135deg, #7b61ff 0%, #6d4fef 100%)",
                 color: "#fff",
                 cursor: "pointer",
                 fontSize: 16,
@@ -536,10 +703,13 @@ export function ChatBot() {
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                transition: "background 0.2s, transform 0.1s",
+                transition: "all 0.2s",
+                boxShadow: loading
+                  ? "0 2px 8px rgba(239,68,68,0.3)"
+                  : "0 2px 8px rgba(123,97,255,0.3)",
               }}
               title={loading ? "Stop generating" : "Send"}
-              onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.93)")}
+              onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
               onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
               onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             >

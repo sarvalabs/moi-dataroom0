@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const CHUNK_SIZE = 500; // ~500 tokens per chunk
-const CHUNK_OVERLAP = 50;
+const CHUNK_SIZE = 2000; // ~2000 chars per chunk (matches working MOI-website)
+const CHUNK_OVERLAP = 200;
 
 /**
  * Split text into overlapping chunks by character count.
@@ -103,7 +103,8 @@ export async function extractText(
   const lower = fileType.toLowerCase();
 
   if (lower === "pdf" || lower === "application/pdf") {
-    // pdf-parse v1 exports a function directly
+    // pdf-parse requires ./test/data/05-versions-space.pdf to exist (known bug).
+    // That file is checked into test/data/ to satisfy this requirement.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
     const result = await pdfParse(buffer);

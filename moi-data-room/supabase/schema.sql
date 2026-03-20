@@ -34,6 +34,8 @@ create table public.documents (
   file_url text,
   file_type text default 'PDF',
   status text default 'published' check (status in ('published', 'draft', 'restricted')),
+  embedding_status text default 'pending' check (embedding_status in ('pending', 'processing', 'completed', 'failed')),
+  embedding_error text,
   uploaded_by uuid references public.profiles(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -59,7 +61,7 @@ create table public.document_embeddings (
 );
 
 -- Indexes
-create index on public.document_embeddings using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+create index on public.document_embeddings using hnsw (embedding vector_cosine_ops);
 create index on public.analytics (document_id);
 create index on public.analytics (user_id);
 
@@ -114,9 +116,9 @@ create trigger on_auth_user_created
 -- RPC for RAG: match document embeddings by cosine similarity
 create or replace function public.match_document_embeddings(
   query_embedding vector(1536),
-  match_count int default 5
+  match_count int default 10
 )
-returns table (id uuid, document_id uuid, content text, chunk_index int, similarity float)
+returns table (id uuid, document_id uuid, content text, chunk_index int, similarity float, document_title text)
 language plpgsql
 security definer
 set search_path = public
@@ -128,8 +130,10 @@ begin
     de.document_id,
     de.content,
     de.chunk_index,
-    1 - (de.embedding <=> query_embedding) as similarity
+    1 - (de.embedding <=> query_embedding) as similarity,
+    d.title as document_title
   from public.document_embeddings de
+  join public.documents d on d.id = de.document_id
   where de.embedding is not null
   order by de.embedding <=> query_embedding
   limit match_count;
