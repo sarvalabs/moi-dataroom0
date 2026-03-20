@@ -24,6 +24,58 @@ export interface NavItem {
   children?: readonly NavItem[];
 }
 
+/* ------------------------------------------------------------------ */
+/*  Subcategories per category                                         */
+/* ------------------------------------------------------------------ */
+export interface SubCategory {
+  id: string;
+  label: string;
+}
+
+export const SUBCATEGORIES: Partial<Record<DocumentCategory, readonly SubCategory[]>> = {
+  contextual_compute: [
+    { id: "architecture", label: "Architecture Overview" },
+    { id: "coco", label: "CoCo Language" },
+    { id: "tesseracts", label: "TESSERACTs" },
+    { id: "context_superstate", label: "Context Superstate" },
+    { id: "protocol_primitives", label: "Protocol Primitives" },
+  ],
+  engineering: [
+    { id: "yellow_paper", label: "Yellow Paper" },
+    { id: "network_objects", label: "Network Objects" },
+    { id: "consensus", label: "Consensus (PoXt)" },
+    { id: "runtime", label: "Runtime & Execution" },
+    { id: "security", label: "Security" },
+  ],
+  research: [
+    { id: "academic_papers", label: "Academic Papers" },
+    { id: "quantum_value", label: "Quantum Value Theory" },
+    { id: "formal_verification", label: "Formal Verification" },
+    { id: "benchmarks", label: "Benchmarks" },
+  ],
+  business: [
+    { id: "gtm_strategy", label: "Go-to-Market Strategy" },
+    { id: "partnerships", label: "Partnerships & Ecosystem" },
+    { id: "competitive", label: "Competitive Analysis" },
+    { id: "revenue", label: "Revenue Model" },
+    { id: "traction", label: "Traction & Metrics" },
+    { id: "slide_deck", label: "Slide Deck" },
+    { id: "team", label: "Team" },
+  ],
+  tokenomics: [
+    { id: "token_model", label: "Token Model" },
+    { id: "distribution", label: "Distribution & Vesting" },
+    { id: "fee_structure", label: "Fee Structure" },
+    { id: "staking", label: "Staking & Rewards" },
+  ],
+  usecases: [
+    { id: "ai_agents", label: "AI Agents" },
+    { id: "defi", label: "DeFi" },
+    { id: "enterprise", label: "Enterprise" },
+    { id: "identity", label: "Identity & Auth" },
+  ],
+};
+
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "home", label: "Home", icon: "⌂", href: "/home" },
   { id: "contextual_compute", label: "Contextual Compute", icon: "⬡", href: "/contextual-compute" },

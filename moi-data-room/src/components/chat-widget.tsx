@@ -160,21 +160,50 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
     />
   ),
 
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        color: "#a78bfa",
-        textDecoration: "underline",
-        textUnderlineOffset: 2,
-        transition: "color 0.2s",
-      }}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const isDocLink = href?.startsWith("/doc/");
+    const handleDocClick = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!href) return;
+      const docId = href.replace("/doc/", "");
+      try {
+        const res = await fetch("/api/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ documentId: docId }),
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          window.open(data.url, "_blank");
+        }
+      } catch {
+        // silent
+      }
+    };
+
+    return (
+      <a
+        href={href}
+        onClick={isDocLink ? handleDocClick : undefined}
+        target={isDocLink ? undefined : "_blank"}
+        rel={isDocLink ? undefined : "noopener noreferrer"}
+        style={{
+          color: isDocLink ? "#c4b5fd" : "#a78bfa",
+          textDecoration: "underline",
+          textDecorationStyle: isDocLink ? "dotted" as const : "solid" as const,
+          textUnderlineOffset: 2,
+          cursor: "pointer",
+          transition: "color 0.2s",
+          fontWeight: isDocLink ? 500 : undefined,
+        }}
+        title={isDocLink ? "Open document" : undefined}
+      >
+        {children}
+        {isDocLink && " ↗"}
+      </a>
+    );
+  },
 
   table: ({ children }) => (
     <div style={{ overflowX: "auto", margin: "10px 0", borderRadius: 8, border: "1px solid rgba(123,97,255,0.15)" }}>

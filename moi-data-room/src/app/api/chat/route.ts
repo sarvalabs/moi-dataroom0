@@ -20,6 +20,12 @@ Style rules:
 - If asked about something outside MOI, politely redirect.
 - Use markdown only when it improves readability.
 
+Document linking:
+- When you reference information from a specific document, link to it inline using the provided document URLs.
+- For example, write "as described in the [Litepaper](/doc/abc-123)" — naturally weave the link into your sentence.
+- Do NOT list sources at the bottom. Embed the links naturally within the text.
+- Only link a document once per response — the first time you mention it.
+
 Tone:
 - Warm, clear, and confident.
 - Sound like a knowledgeable team member, not a marketing brochure.`;
@@ -61,6 +67,8 @@ export async function POST(request: Request) {
     }
 
     let chunks: string[] = [];
+    const docMap = new Map<string, string>(); // docId -> title
+
     if (embedding.length > 0) {
       try {
         const admin = createAdminClient();
@@ -69,15 +77,23 @@ export async function POST(request: Request) {
           match_count: 8,
         });
         if (Array.isArray(rows)) {
-          chunks = rows
-            .filter((r: { similarity?: number }) => (r.similarity ?? 0) >= 0.3)
-            .map((r: { content?: string; document_title?: string }) => {
-              const content = r.content ?? "";
-              if (!content) return "";
-              const label = r.document_title ?? "Unknown Document";
-              return `[Excerpt from: ${label}]\n${content}`;
-            })
-            .filter(Boolean);
+          const filtered = rows.filter(
+            (r: { similarity?: number }) => (r.similarity ?? 0) >= 0.3
+          );
+          for (const r of filtered) {
+            const content = (r as { content?: string }).content ?? "";
+            if (!content) continue;
+            const docId = (r as { document_id?: string }).document_id ?? "";
+            const docTitle =
+              (r as { document_title?: string }).document_title ??
+              "Unknown Document";
+
+            chunks.push(`[Excerpt from: ${docTitle}]\n${content}`);
+
+            if (docId && !docMap.has(docId)) {
+              docMap.set(docId, docTitle);
+            }
+          }
         }
       } catch (e) {
         console.error("Supabase RPC error:", e);
@@ -85,11 +101,10 @@ export async function POST(request: Request) {
     }
 
     // Log the chat query for analytics (fire-and-forget)
-    createAdminClient()
+    void createAdminClient()
       .from("chat_queries")
       .insert({ question: lastContent, chunks_found: chunks.length })
-      .then(() => {})
-      .catch(() => {});
+      .then(() => {});
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicKey || anthropicKey.startsWith("your_")) {
@@ -99,22 +114,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Build context from chunks, like the working MOI website
-    const context = chunks.length > 0
-      ? chunks.join("\n\n---\n\n")
-      : "(No relevant excerpts found in the data room documents.)";
+    // Build context from chunks
+    const context =
+      chunks.length > 0
+        ? chunks.join("\n\n---\n\n")
+        : "(No relevant excerpts found in the data room documents.)";
 
-    // Inject context into the last user message with <context> tags
-    const recentHistory = messages.slice(-10).map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
-      content: m.content,
-    }));
+    // Build document link reference for Claude
+    const docLinks = Array.from(docMap.entries())
+      .map(([id, title]) => `- "${title}" → link: [${title}](/doc/${id})`)
+      .join("\n");
 
-    // Replace the last user message with context-wrapped version
+    const docLinkInstruction = docLinks
+      ? `\n\nAvailable document links (use these exact markdown links when referencing a document):\n${docLinks}`
+      : "";
+
+    // Inject context into the last user message
+    const recentHistory = messages
+      .slice(-10)
+      .map((m: { role: string; content: string }) => ({
+        role:
+          m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+      }));
+
     const lastIdx = recentHistory.length - 1;
     recentHistory[lastIdx] = {
       role: "user" as const,
-      content: `<context>\n${context}\n</context>\n\nUser question: ${lastContent}`,
+      content: `<context>\n${context}\n</context>${docLinkInstruction}\n\nUser question: ${lastContent}`,
     };
 
     const anthropic = new Anthropic({ apiKey: anthropicKey });

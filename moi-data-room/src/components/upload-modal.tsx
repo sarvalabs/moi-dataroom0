@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "./button";
+import { SUBCATEGORIES } from "@/lib/constants";
 import type { DocumentCategory } from "@/lib/constants";
 
 const CATEGORIES: { value: DocumentCategory | "home"; label: string }[] = [
@@ -37,6 +38,7 @@ export function UploadModal({
 }) {
   const [category, setCategory] = useState<DocumentCategory | "home" | "">("");
   const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [subcategory, setSubcategory] = useState<string>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -46,10 +48,12 @@ export function UploadModal({
 
   const isHome = category === "home";
   const slot = HOME_SLOTS.find((s) => s.id === selectedSlot);
+  const subcats = !isHome && category ? SUBCATEGORIES[category as DocumentCategory] : undefined;
 
   const handleCategoryChange = (val: string) => {
     setCategory(val as DocumentCategory | "home" | "");
     setSelectedSlot("");
+    setSubcategory("");
     if (val !== "home") {
       setTitle("");
       setDescription("");
@@ -105,6 +109,7 @@ export function UploadModal({
         body: JSON.stringify({
           title: finalTitle,
           category: finalCategory,
+          subcategory: isHome ? null : (subcategory || null),
           description: finalDesc,
           file_url: path,
           file_type: file ? fileTypeFromMime(file.type) : "PDF",
@@ -191,6 +196,27 @@ export function UploadModal({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Subcategory picker — shown when category has subcategories */}
+        {subcats && subcats.length > 0 && (
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              Subcategory
+            </label>
+            <select
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            >
+              <option value="">General</option>
+              {subcats.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
