@@ -3,14 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { BentoCard } from "@/components/bento-card";
 import { Button } from "@/components/button";
-import { Pill } from "@/components/pill";
-import { ToggleSwitch } from "@/components/toggle-switch";
 import { AdminRow } from "@/components/admin-row";
 import { UploadModal } from "@/components/upload-modal";
-import {
-  ANALYTICS_DATA,
-  ACCESS_USERS,
-} from "@/lib/constants";
 import type { Document } from "@/lib/types";
 
 export default function AdminDashboard() {
@@ -51,6 +45,18 @@ export default function AdminDashboard() {
   const topDocs = [...docs].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 5);
   const maxViews = Math.max(...topDocs.map((d) => d.view_count ?? 0), 1);
 
+  const totalViews = docs.reduce((sum, d) => sum + (d.view_count ?? 0), 0);
+  const totalDocs = docs.length;
+  const publishedDocs = docs.filter((d) => d.status === "published").length;
+  const indexedDocs = docs.filter((d) => d.embedding_status === "completed").length;
+
+  const analyticsCards = [
+    { label: "Total Documents", value: String(totalDocs) },
+    { label: "Published", value: String(publishedDocs) },
+    { label: "Indexed for AI", value: `${indexedDocs}/${totalDocs}` },
+    { label: "Total Views", value: totalViews.toLocaleString() },
+  ];
+
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
@@ -59,7 +65,7 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h2>
           <p className="mt-1 text-[13px] text-text-muted">
-            Manage documents, permissions, and analytics
+            Manage documents and analytics
           </p>
         </div>
         <Button size="md" onClick={() => setShowModal(true)}>
@@ -69,16 +75,13 @@ export default function AdminDashboard() {
 
       {/* Analytics Cards */}
       <div className="mb-8 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3.5">
-        {ANALYTICS_DATA.map((a) => (
+        {analyticsCards.map((a) => (
           <BentoCard key={a.label}>
             <div className="mb-2 text-xs font-medium text-text-muted">
               {a.label}
             </div>
             <div className="text-[28px] font-bold tracking-[-0.03em] text-text">
               {a.value}
-            </div>
-            <div className="mt-2">
-              <Pill variant="green">{a.delta}</Pill>
             </div>
           </BentoCard>
         ))}
@@ -151,35 +154,6 @@ export default function AdminDashboard() {
             ))
           )}
         </div>
-      </BentoCard>
-
-      {/* Access Permissions */}
-      <BentoCard className="mt-6">
-        <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-          Access Permissions
-        </h3>
-        {ACCESS_USERS.map((user, i) => (
-          <div
-            key={user.name}
-            className="flex items-center justify-between py-3"
-            style={{
-              borderBottom:
-                i < ACCESS_USERS.length - 1
-                  ? "1px solid var(--border)"
-                  : "none",
-            }}
-          >
-            <div>
-              <div className="text-[13px] font-medium text-text">
-                {user.name}
-              </div>
-              <div className="mt-0.5 text-[11px] text-text-muted">
-                {user.role}
-              </div>
-            </div>
-            <ToggleSwitch checked={user.access} />
-          </div>
-        ))}
       </BentoCard>
 
       {showModal && (
