@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { StatCardsGrid } from "@/components/stat-card";
 import { Button } from "@/components/button";
-import { QUICK_ACCESS } from "@/lib/constants";
+import { DOC_SLOTS } from "@/lib/constants";
 
 const DOT_COLORS: Record<string, string> = {
-  "Pitch Deck": "#7B61FF",
-  "Yellow Paper": "#2DD4BF",
-  "Tokenomics": "#F59E0B",
-  "Lite Paper": "#EF4444",
+  "Litepaper": "#7B61FF",
+  "Slide Deck": "#2DD4BF",
+  "Yellow Paper": "#F59E0B",
+  "Contextual Compute": "#EF4444",
 };
 
 interface QuickDoc {
@@ -97,40 +97,29 @@ function QuickAccessRow({
   );
 }
 
-const TITLE_MATCH: Record<string, string[]> = {
-  "Pitch Deck": ["pitch deck", "pitch"],
-  "Yellow Paper": ["yellow paper"],
-  "Tokenomics": ["tokenomics", "token economics"],
-  "Lite Paper": ["litepaper", "lite paper", "lite-paper"],
-};
-
 function matchDoc(
-  quickTitle: string,
-  docs: { id: string; title: string }[]
+  slotCategory: string,
+  docs: { id: string; category: string }[]
 ): string | undefined {
-  const patterns = TITLE_MATCH[quickTitle];
-  if (!patterns) return undefined;
-  const found = docs.find((d) =>
-    patterns.some((p) => d.title.toLowerCase().includes(p))
-  );
+  const found = docs.find((d) => d.category === slotCategory);
   return found?.id;
 }
 
 export default function HomePage() {
   const [quickDocs, setQuickDocs] = useState<QuickDoc[]>(
-    QUICK_ACCESS.map((q) => ({ title: q.title, sub: q.sub }))
+    DOC_SLOTS.map((s) => ({ title: s.label, sub: s.sub }))
   );
 
   const linkDocs = useCallback(async () => {
     try {
       const res = await fetch("/api/documents", { credentials: "include" });
       if (!res.ok) return;
-      const docs: { id: string; title: string }[] = await res.json();
+      const docs: { id: string; category: string }[] = await res.json();
       setQuickDocs(
-        QUICK_ACCESS.map((q) => ({
-          title: q.title,
-          sub: q.sub,
-          docId: matchDoc(q.title, docs),
+        DOC_SLOTS.map((s) => ({
+          title: s.label,
+          sub: s.sub,
+          docId: matchDoc(s.slot, docs),
         }))
       );
     } catch {

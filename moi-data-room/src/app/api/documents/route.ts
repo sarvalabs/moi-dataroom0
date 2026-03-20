@@ -15,7 +15,28 @@ export async function GET(request: Request) {
 
   const { data: documents, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(documents ?? []);
+
+  // Compute view counts from analytics table
+  const docIds = (documents ?? []).map((d: { id: string }) => d.id);
+  let viewCounts: Record<string, number> = {};
+  if (docIds.length > 0) {
+    const { data: analytics } = await admin
+      .from("analytics")
+      .select("document_id")
+      .in("document_id", docIds);
+    if (analytics) {
+      for (const row of analytics) {
+        viewCounts[row.document_id] = (viewCounts[row.document_id] ?? 0) + 1;
+      }
+    }
+  }
+
+  const enriched = (documents ?? []).map((doc: { id: string }) => ({
+    ...doc,
+    view_count: viewCounts[doc.id] ?? 0,
+  }));
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(request: Request) {

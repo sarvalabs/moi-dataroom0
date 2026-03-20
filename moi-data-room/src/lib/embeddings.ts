@@ -103,11 +103,14 @@ export async function extractText(
   const lower = fileType.toLowerCase();
 
   if (lower === "pdf" || lower === "application/pdf") {
-    // pdf-parse requires ./test/data/05-versions-space.pdf to exist (known bug).
-    // That file is checked into test/data/ to satisfy this requirement.
+    // Import pdf-parse/lib/pdf-parse.js directly to avoid the known bug where
+    // the index.js entry point tries to read ./test/data/05-versions-space.pdf
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-    const result = await pdfParse(buffer);
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+      buf: Buffer,
+      options?: Record<string, unknown>
+    ) => Promise<{ text: string }>;
+    const result = await pdfParse(buffer, {});
     return result.text;
   }
 

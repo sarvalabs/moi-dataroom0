@@ -84,6 +84,13 @@ export async function POST(request: Request) {
       }
     }
 
+    // Log the chat query for analytics (fire-and-forget)
+    createAdminClient()
+      .from("chat_queries")
+      .insert({ question: lastContent, chunks_found: chunks.length })
+      .then(() => {})
+      .catch(() => {});
+
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicKey || anthropicKey.startsWith("your_")) {
       return NextResponse.json(
