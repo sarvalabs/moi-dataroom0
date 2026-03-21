@@ -6,14 +6,12 @@ import { extractText, embedAndStore } from "@/lib/embeddings";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
-  const subcategory = searchParams.get("subcategory");
   const admin = createAdminClient();
   const isAdmin = await isAdminRequest(request);
 
   let query = admin.from("documents").select("*").order("created_at", { ascending: false });
   if (!isAdmin) query = query.eq("status", "published");
   if (category) query = query.eq("category", category);
-  if (subcategory) query = query.eq("subcategory", subcategory);
 
   const { data: documents, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();
-  const { title, description, category, subcategory, file_url, file_type, status } = body;
+  const { title, description, category, file_url, file_type, status } = body;
   if (!title || !category) {
     return NextResponse.json({ error: "title and category required" }, { status: 400 });
   }
@@ -57,7 +55,6 @@ export async function POST(request: Request) {
       title,
       description: description ?? null,
       category,
-      subcategory: subcategory ?? null,
       file_url: file_url ?? null,
       file_type: file_type ?? "PDF",
       status: status ?? "published",

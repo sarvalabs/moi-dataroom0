@@ -18,7 +18,6 @@ export interface Document {
   title: string;
   description: string | null;
   category: DocumentCategory;
-  subcategory: string | null;
   file_url: string | null;
   file_type: string;
   status: DocumentStatus;
