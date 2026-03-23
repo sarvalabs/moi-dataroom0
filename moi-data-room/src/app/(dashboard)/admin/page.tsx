@@ -294,12 +294,17 @@ function EditModal({
 }) {
   const [title, setTitle] = useState(doc.title);
   const [description, setDescription] = useState(doc.description ?? "");
+  const [category, setCategory] = useState(doc.category);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!title.trim()) {
       setError("Title is required.");
+      return;
+    }
+    if (!category) {
+      setError("Please select a category.");
       return;
     }
     setSaving(true);
@@ -312,6 +317,7 @@ function EditModal({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
+          category,
         }),
       });
       if (!res.ok) {
@@ -340,7 +346,7 @@ function EditModal({
       >
         <h3 className="text-lg font-bold text-text">Edit Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Update title and description.
+          Update title, description, and category.
         </p>
 
         <div className="mb-4">
@@ -352,6 +358,22 @@ function EditModal({
             onChange={(e) => setTitle(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           />
+        </div>
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Category
+          </label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          >
+            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="mb-6">
           <label className="mb-1.5 block text-xs font-semibold text-text-dim">
