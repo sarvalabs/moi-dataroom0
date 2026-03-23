@@ -112,12 +112,18 @@ function QuickAccessRow({
   );
 }
 
+interface ApiDoc {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+}
+
 function matchDoc(
   slotCategory: string,
-  docs: { id: string; category: string }[]
-): string | undefined {
-  const found = docs.find((d) => d.category === slotCategory);
-  return found?.id;
+  docs: ApiDoc[]
+): ApiDoc | undefined {
+  return docs.find((d) => d.category === slotCategory);
 }
 
 export default function HomePage() {
@@ -129,13 +135,16 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/documents", { credentials: "include" });
       if (!res.ok) return;
-      const docs: { id: string; category: string }[] = await res.json();
+      const docs: ApiDoc[] = await res.json();
       setQuickDocs(
-        DOC_SLOTS.map((s) => ({
-          title: s.label,
-          sub: s.sub,
-          docId: matchDoc(s.slot, docs),
-        }))
+        DOC_SLOTS.map((s) => {
+          const matched = matchDoc(s.slot, docs);
+          return {
+            title: matched?.title ?? s.label,
+            sub: matched?.description ?? s.sub,
+            docId: matched?.id,
+          };
+        })
       );
     } catch {
       // keep fallback
