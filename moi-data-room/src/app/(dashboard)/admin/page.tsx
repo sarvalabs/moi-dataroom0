@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats>({ chatQueries: 0, topDocs: [] });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -253,6 +254,7 @@ export default function AdminDashboard() {
                 onDelete={() => handleDelete(doc.id)}
                 onReindex={() => handleReindex(doc.id)}
                 onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
+                onEdit={() => setEditingDoc(doc)}
               />
             ))}
           </div>
@@ -265,6 +267,115 @@ export default function AdminDashboard() {
           onSuccess={fetchDocs}
         />
       )}
+
+      {editingDoc && (
+        <EditModal
+          doc={editingDoc}
+          onClose={() => setEditingDoc(null)}
+          onSaved={(updated) => {
+            setDocs((prev) =>
+              prev.map((d) => (d.id === updated.id ? updated : d))
+            );
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditModal({
+  doc,
+  onClose,
+  onSaved,
+}: {
+  doc: Document;
+  onClose: () => void;
+  onSaved: (updated: Document) => void;
+}) {
+  const [title, setTitle] = useState(doc.title);
+  const [description, setDescription] = useState(doc.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Save failed");
+      }
+      const updated = await res.json();
+      onSaved(updated);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-[4px]"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-[440px] max-w-[90vw] rounded-2xl border border-border bg-surface p-8"
+      >
+        <h3 className="text-lg font-bold text-text">Edit Document</h3>
+        <p className="mb-6 mt-1 text-xs text-text-muted">
+          Update title and description.
+        </p>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Title
+          </label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Description
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none resize-none"
+          />
+        </div>
+
+        {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
+
+        <div className="flex justify-end gap-2.5">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -274,11 +385,13 @@ function DocRow({
   onDelete,
   onReindex,
   onToggleDownload,
+  onEdit,
 }: {
   doc: Document;
   onDelete: () => void;
   onReindex: () => void;
   onToggleDownload: () => void;
+  onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const embStatus = doc.embedding_status ?? "pending";
@@ -353,7 +466,7 @@ function DocRow({
         <Button variant="ghost" size="sm" onClick={onReindex}>
           Re-index
         </Button>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" onClick={onEdit}>
           Edit
         </Button>
         <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">
