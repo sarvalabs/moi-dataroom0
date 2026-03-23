@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import { getClientIP } from "@/lib/rate-limit";
 import {
   checkClaudeBudget,
   recordTokenUsage,
@@ -39,18 +39,8 @@ Tone:
 
 export async function POST(request: Request) {
   try {
-    // --- Layer 1: IP-based rate limiting (20 req/min) ---
+    // Layer 1 (IP rate limiting) is now handled globally in middleware.ts
     const clientIP = getClientIP(request);
-    const rateCheck = checkRateLimit(`chat:${clientIP}`, 20, 60_000);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        {
-          status: 429,
-          headers: { "Retry-After": String(rateCheck.retryAfter) },
-        }
-      );
-    }
 
     const body = await request.json();
     const { messages } = body as { messages: { role: string; content: string }[] };
