@@ -40,6 +40,7 @@ export function UploadModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [allowDownload, setAllowDownload] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +109,7 @@ export function UploadModal({
           description: finalDesc,
           file_url: path,
           file_type: file ? fileTypeFromMime(file.type) : "PDF",
+          allow_download: allowDownload,
         }),
       });
       if (!docRes.ok) {
@@ -218,6 +220,32 @@ export function UploadModal({
               />
             </div>
           </>
+        )}
+
+        {/* Download permission */}
+        {(isHome ? selectedSlot : category) && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={allowDownload}
+              onClick={() => setAllowDownload(!allowDownload)}
+              className="relative h-5 w-9 rounded-full transition-colors"
+              style={{
+                background: allowDownload ? "var(--accent)" : "var(--border)",
+              }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                style={{
+                  transform: allowDownload ? "translateX(16px)" : "translateX(0)",
+                }}
+              />
+            </button>
+            <label className="text-xs font-medium text-text-dim">
+              Allow users to download this file
+            </label>
+          </div>
         )}
 
         {/* File drop */}

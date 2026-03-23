@@ -36,6 +36,7 @@ create table public.documents (
   status text default 'published' check (status in ('published', 'draft', 'restricted')),
   embedding_status text default 'pending' check (embedding_status in ('pending', 'processing', 'completed', 'failed')),
   embedding_error text,
+  allow_download boolean not null default true,
   uploaded_by uuid references public.profiles(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now()

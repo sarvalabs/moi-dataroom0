@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { StatCardsGrid } from "@/components/stat-card";
 import { Button } from "@/components/button";
+import { PdfViewer } from "@/components/pdf-viewer";
 import { DOC_SLOTS } from "@/lib/constants";
 
 const DOT_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ function QuickAccessRow({
 }) {
   const [hov, setHov] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const dot = DOT_COLORS[item.title] ?? "var(--accent)";
 
   const handleClick = async () => {
@@ -42,7 +44,15 @@ function QuickAccessRow({
       });
       const data = await res.json();
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        const allowDownload = data.allowDownload ?? true;
+        const fileType = data.fileType ?? "PDF";
+        if (!allowDownload && fileType === "PDF") {
+          setViewerUrl(data.url);
+        } else if (!allowDownload) {
+          window.open(data.url, "_blank", "noopener");
+        } else {
+          window.location.href = data.url;
+        }
       }
     } catch {
       // silent
@@ -52,6 +62,10 @@ function QuickAccessRow({
   };
 
   return (
+    <>
+    {viewerUrl && (
+      <PdfViewer url={viewerUrl} title={item.title} onClose={() => setViewerUrl(null)} />
+    )}
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -94,6 +108,7 @@ function QuickAccessRow({
         {loading ? "…" : "↗"}
       </span>
     </div>
+    </>
   );
 }
 

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: doc, error: docError } = await admin
     .from("documents")
-    .select("file_url")
+    .select("file_url, allow_download, file_type")
     .eq("id", documentId)
     .eq("status", "published")
     .single();
@@ -44,5 +44,9 @@ export async function POST(request: Request) {
     action: "view",
   });
 
-  return NextResponse.json({ url: signed.signedUrl });
+  return NextResponse.json({
+    url: signed.signedUrl,
+    allowDownload: doc.allow_download ?? true,
+    fileType: doc.file_type ?? "PDF",
+  });
 }

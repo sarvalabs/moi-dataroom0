@@ -23,6 +23,7 @@ export interface Document {
   status: DocumentStatus;
   embedding_status: EmbeddingStatus;
   embedding_error: string | null;
+  allow_download: boolean;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;

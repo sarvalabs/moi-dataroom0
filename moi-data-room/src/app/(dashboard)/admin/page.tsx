@@ -85,6 +85,23 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const handleToggleDownload = useCallback(async (id: string, current: boolean) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ allow_download: !current }),
+      });
+      if (!res.ok) throw new Error("Toggle failed");
+      setDocs((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, allow_download: !current } : d))
+      );
+    } catch {
+      // silent
+    }
+  }, []);
+
   const handleReindex = useCallback(async (id: string) => {
     try {
       await fetch("/api/documents/reembed", {
@@ -212,16 +229,16 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 1fr 90px 100px 60px 200px",
+                gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 700,
+                minWidth: 780,
               }}
             >
-              {["Document", "Category", "Status", "Embeddings", "Views", "Actions"].map((h) => (
+              {["Document", "Category", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
@@ -235,6 +252,7 @@ export default function AdminDashboard() {
                 doc={doc}
                 onDelete={() => handleDelete(doc.id)}
                 onReindex={() => handleReindex(doc.id)}
+                onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
               />
             ))}
           </div>
@@ -255,10 +273,12 @@ function DocRow({
   doc,
   onDelete,
   onReindex,
+  onToggleDownload,
 }: {
   doc: Document;
   onDelete: () => void;
   onReindex: () => void;
+  onToggleDownload: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const embStatus = doc.embedding_status ?? "pending";
@@ -269,14 +289,14 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.5fr 1fr 90px 100px 60px 200px",
+        gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 700,
+        minWidth: 780,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
@@ -294,6 +314,37 @@ function DocRow({
         <Pill variant={embeddingVariant(embStatus)}>
           {embeddingLabel(embStatus)}
         </Pill>
+      </div>
+      <div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={doc.allow_download}
+          onClick={onToggleDownload}
+          style={{
+            position: "relative",
+            width: 34,
+            height: 18,
+            borderRadius: 9,
+            border: "none",
+            cursor: "pointer",
+            background: doc.allow_download ? "var(--accent)" : "var(--border)",
+            transition: "background 0.2s",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: doc.allow_download ? 18 : 2,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "#fff",
+              transition: "left 0.2s",
+            }}
+          />
+        </button>
       </div>
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {doc.view_count ?? 0}

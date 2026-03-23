@@ -11,9 +11,10 @@ interface ApiDoc {
   file_type?: string;
   created_at?: string;
   view_count?: number;
+  allow_download?: boolean;
 }
 
-function mapApiDocToItem(d: ApiDoc): DocumentItem & { id?: string } {
+function mapApiDocToItem(d: ApiDoc): DocumentItem & { id?: string; allow_download?: boolean } {
   return {
     id: d.id,
     title: d.title,
@@ -21,6 +22,7 @@ function mapApiDocToItem(d: ApiDoc): DocumentItem & { id?: string } {
     type: d.file_type ?? "PDF",
     date: d.created_at ? d.created_at.slice(0, 10) : "",
     views: d.view_count ?? 0,
+    allow_download: d.allow_download ?? true,
   };
 }
 

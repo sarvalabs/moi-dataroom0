@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();
-  const { title, description, category, file_url, file_type, status } = body;
+  const { title, description, category, file_url, file_type, status, allow_download } = body;
   if (!title || !category) {
     return NextResponse.json({ error: "title and category required" }, { status: 400 });
   }
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       file_url: file_url ?? null,
       file_type: file_type ?? "PDF",
       status: status ?? "published",
+      allow_download: allow_download ?? true,
       uploaded_by: null,
     })
     .select()
