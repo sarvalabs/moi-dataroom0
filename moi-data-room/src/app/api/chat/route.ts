@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import {
+  checkClaudeBudget,
+  recordTokenUsage,
+  MAX_INPUT_TOKENS_PER_REQUEST,
+  MAX_OUTPUT_TOKENS,
+} from "@/lib/claude-budget";
 
 const SYSTEM_PROMPT = `You are MOI Assistant, an expert on the MOI protocol and its investor data room.
 
@@ -32,6 +39,19 @@ Tone:
 
 export async function POST(request: Request) {
   try {
+    // --- Layer 1: IP-based rate limiting (20 req/min) ---
+    const clientIP = getClientIP(request);
+    const rateCheck = checkRateLimit(`chat:${clientIP}`, 20, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateCheck.retryAfter) },
+        }
+      );
+    }
+
     const body = await request.json();
     const { messages } = body as { messages: { role: string; content: string }[] };
 
@@ -42,12 +62,42 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- Input validation: cap message count and individual message length ---
+    if (messages.length > 50) {
+      return NextResponse.json(
+        { error: "Too many messages (max 50)" },
+        { status: 400 }
+      );
+    }
+    for (const msg of messages) {
+      if (typeof msg.content !== "string" || msg.content.length > 5000) {
+        return NextResponse.json(
+          { error: "Each message must be at most 5000 characters" },
+          { status: 400 }
+        );
+      }
+    }
+
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     const lastContent = lastUser?.content?.trim();
     if (!lastContent) {
       return NextResponse.json(
         { error: "No user message found" },
         { status: 400 }
+      );
+    }
+
+    // --- Layer 2: Claude-specific budget guard (per-IP hourly + global daily token cap) ---
+    const budgetCheck = checkClaudeBudget(clientIP);
+    if (!budgetCheck.allowed) {
+      return NextResponse.json(
+        { error: budgetCheck.reason },
+        {
+          status: 429,
+          headers: budgetCheck.retryAfter
+            ? { "Retry-After": String(budgetCheck.retryAfter) }
+            : {},
+        }
       );
     }
 
@@ -147,7 +197,7 @@ export async function POST(request: Request) {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+      max_tokens: MAX_OUTPUT_TOKENS,
       system: SYSTEM_PROMPT,
       messages: recentHistory,
     });
@@ -170,6 +220,14 @@ export async function POST(request: Request) {
               if (text) controller.enqueue(encoder.encode(text));
             }
           }
+
+          // --- Layer 2 continued: Record token usage after stream completes ---
+          const finalMessage = await stream.finalMessage();
+          recordTokenUsage(
+            finalMessage.usage?.input_tokens ?? 0,
+            finalMessage.usage?.output_tokens ?? 0
+          );
+
           controller.close();
         } catch (err) {
           console.error("Anthropic stream error:", err);
