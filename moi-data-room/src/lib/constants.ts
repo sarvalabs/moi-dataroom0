@@ -115,3 +115,15 @@ export const HERO_CARDS: readonly HeroCard[] = [
   },
 ] as const;
 
+export type HeroCardId = (typeof HERO_CARDS)[number]["id"];
+
+export function isHeroCardId(value: unknown): value is HeroCardId {
+  return typeof value === "string" && HERO_CARDS.some((c) => c.id === value);
+}
+
+/** Short label for admin (matches home hero tile). */
+export function heroHomeAdminLabel(id: HeroCardId): string {
+  const c = HERO_CARDS.find((h) => h.id === id);
+  return c ? `${c.title} (row ${c.row})` : id;
+}
+

@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminRequest } from "@/lib/auth-admin";
 import { extractText, embedAndStore } from "@/lib/embeddings";
 import { normalizeExternalUrl } from "@/lib/external-url";
+import { isHeroCardId } from "@/lib/constants";
+import { clearOtherDocumentsHeroSlot } from "@/lib/documents-hero-slot";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
     file_type,
     status,
     allow_download,
-    show_on_overview,
+    home_hero_slot: rawHomeSlot,
   } = body;
   if (!title || !category) {
     return NextResponse.json({ error: "title and category required" }, { status: 400 });
@@ -78,7 +80,20 @@ export async function POST(request: Request) {
       ? file_type.trim()
       : "Link";
 
+  let homeHeroSlot: string | null = null;
+  if (rawHomeSlot !== undefined && rawHomeSlot !== null && String(rawHomeSlot).trim() !== "") {
+    const slot = String(rawHomeSlot).trim();
+    if (!isHeroCardId(slot)) {
+      return NextResponse.json({ error: "Invalid home_hero_slot" }, { status: 400 });
+    }
+    homeHeroSlot = slot;
+  }
+
   const admin = createAdminClient();
+  if (homeHeroSlot) {
+    await clearOtherDocumentsHeroSlot(admin, homeHeroSlot);
+  }
+
   const { data, error } = await admin
     .from("documents")
     .insert({
@@ -90,7 +105,8 @@ export async function POST(request: Request) {
       file_type: resolvedFileType,
       status: status ?? "published",
       allow_download: allow_download ?? true,
-      show_on_overview: show_on_overview ?? false,
+      show_on_overview: !!homeHeroSlot,
+      home_hero_slot: homeHeroSlot,
       uploaded_by: null,
       embedding_status: filePath ? "pending" : "completed",
       embedding_error: null,

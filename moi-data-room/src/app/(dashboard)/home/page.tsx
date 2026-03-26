@@ -12,12 +12,17 @@ interface ApiDoc {
   description?: string | null;
   category: string;
   show_on_overview?: boolean;
+  home_hero_slot?: string | null;
 }
 
 function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
+  const pinned = docs.find((d) => d.home_hero_slot === card.id);
+  if (pinned) return pinned;
+
+  const unpinned = docs.filter((d) => !d.home_hero_slot);
   const pool = card.matchCategory
-    ? docs.filter((d) => d.category === card.matchCategory)
-    : docs.filter((d) => d.show_on_overview);
+    ? unpinned.filter((d) => d.category === card.matchCategory)
+    : unpinned.filter((d) => d.show_on_overview);
 
   if (card.matchTitleHint) {
     const byTitle = pool.find((d) =>

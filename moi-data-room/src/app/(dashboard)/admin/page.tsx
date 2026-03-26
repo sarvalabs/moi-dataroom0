@@ -7,6 +7,7 @@ import { Pill } from "@/components/pill";
 import { UploadModal } from "@/components/upload-modal";
 import { normalizeExternalUrl } from "@/lib/external-url";
 import type { Document } from "@/lib/types";
+import { HERO_CARDS, heroHomeAdminLabel, isHeroCardId } from "@/lib/constants";
 
 const CATEGORY_LABELS: Record<string, string> = {
   contextual_compute: "Contextual Compute",
@@ -129,9 +130,11 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h2>
           <p className="mt-1 text-[13px] text-text-muted">
-            Manage uploads. To use a Zenodo record as the open target from lists, click{" "}
+            Manage uploads.             To use a Zenodo record as the open target from lists, click{" "}
             <strong className="font-semibold text-text-dim">Edit</strong> and paste the full record URL
-            (e.g. <code className="text-[12px] text-text-muted">https://zenodo.org/records/…</code>).
+            (e.g. <code className="text-[12px] text-text-muted">https://zenodo.org/records/…</code>).{" "}
+            Assign each home hero tile under <strong className="font-semibold text-text-dim">Home slot</strong>{" "}
+            (one document per slot).
           </p>
         </div>
         <Button size="md" onClick={() => setShowModal(true)}>
@@ -232,16 +235,16 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.35fr 52px 0.95fr 56px 88px 96px 76px 56px 196px",
+                gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 56px 196px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 980,
+                minWidth: 1040,
               }}
             >
-              {["Document", "Zenodo", "Category", "Home", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
+              {["Document", "Zenodo", "Category", "Home slot", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
@@ -297,7 +300,9 @@ function EditModal({
   const [title, setTitle] = useState(doc.title);
   const [description, setDescription] = useState(doc.description ?? "");
   const [category, setCategory] = useState(doc.category);
-  const [showOnOverview, setShowOnOverview] = useState(doc.show_on_overview ?? false);
+  const [homeHeroSlot, setHomeHeroSlot] = useState<string>(
+    doc.home_hero_slot && isHeroCardId(doc.home_hero_slot) ? doc.home_hero_slot : ""
+  );
   const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -329,7 +334,7 @@ function EditModal({
         title: title.trim(),
         description: description.trim() || null,
         category,
-        show_on_overview: showOnOverview,
+        home_hero_slot: homeHeroSlot.trim() ? homeHeroSlot.trim() : null,
         external_url: normalized,
       };
 
@@ -407,28 +412,27 @@ function EditModal({
           />
         </div>
 
-        <div className="mb-6 flex items-center gap-3">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={showOnOverview}
-            onClick={() => setShowOnOverview(!showOnOverview)}
-            disabled={saving}
-            className="relative h-5 w-9 rounded-full transition-colors"
-            style={{
-              background: showOnOverview ? "var(--accent)" : "var(--border)",
-            }}
-          >
-            <span
-              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
-              style={{
-                transform: showOnOverview ? "translateX(16px)" : "translateX(0)",
-              }}
-            />
-          </button>
-          <label className="text-xs font-medium text-text-dim">
-            Show on Home page (Overview)
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Home page hero slot
           </label>
+          <select
+            value={homeHeroSlot}
+            onChange={(e) => setHomeHeroSlot(e.target.value)}
+            disabled={saving}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          >
+            <option value="">Not shown on home</option>
+            {HERO_CARDS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {heroHomeAdminLabel(c.id)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-muted">
+            Picks which of the six hero tiles opens this document. Only one doc can occupy each slot;
+            assigning here moves any previous doc off that slot.
+          </p>
         </div>
 
         <div className="mb-4">
@@ -485,14 +489,14 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.35fr 52px 0.95fr 56px 88px 96px 76px 56px 196px",
+        gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 56px 196px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 980,
+        minWidth: 1040,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{doc.title}</div>
@@ -510,8 +514,21 @@ function DocRow({
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {CATEGORY_LABELS[doc.category] ?? doc.category}
       </div>
-      <div style={{ fontSize: 12, color: doc.show_on_overview ? "var(--accent)" : "var(--text-muted)" }}>
-        {doc.show_on_overview ? "Yes" : "—"}
+      <div
+        style={{
+          fontSize: 12,
+          color: doc.home_hero_slot ? "var(--accent)" : "var(--text-muted)",
+          lineHeight: 1.35,
+        }}
+        title={
+          doc.home_hero_slot && isHeroCardId(doc.home_hero_slot)
+            ? heroHomeAdminLabel(doc.home_hero_slot)
+            : undefined
+        }
+      >
+        {doc.home_hero_slot && isHeroCardId(doc.home_hero_slot)
+          ? HERO_CARDS.find((c) => c.id === doc.home_hero_slot)?.title ?? "—"
+          : "—"}
       </div>
       <div>
         <Pill variant={doc.status === "published" ? "green" : "amber"}>

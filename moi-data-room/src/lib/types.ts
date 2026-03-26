@@ -26,6 +26,8 @@ export interface Document {
   embedding_error: string | null;
   allow_download: boolean;
   show_on_overview: boolean;
+  /** Pinned to this hero tile on /home; must match `HERO_CARDS.id`. */
+  home_hero_slot?: string | null;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;

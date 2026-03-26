@@ -2,7 +2,11 @@
 
 import { useState, useRef } from "react";
 import { Button } from "./button";
-import type { DocumentCategory } from "@/lib/constants";
+import {
+  type DocumentCategory,
+  HERO_CARDS,
+  heroHomeAdminLabel,
+} from "@/lib/constants";
 import { normalizeExternalUrl } from "@/lib/external-url";
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
@@ -31,7 +35,7 @@ export function UploadModal({
   const [category, setCategory] = useState<DocumentCategory | "">("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [showOnOverview, setShowOnOverview] = useState(false);
+  const [homeHeroSlot, setHomeHeroSlot] = useState("");
   const [publicUrl, setPublicUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
@@ -44,6 +48,7 @@ export function UploadModal({
     setTitle("");
     setDescription("");
     setPublicUrl("");
+    setHomeHeroSlot("");
     setFile(null);
   };
 
@@ -115,7 +120,7 @@ export function UploadModal({
           ...(externalUrl ? { external_url: externalUrl } : {}),
           file_type: fileTypeFromMime(file.type),
           allow_download: allowDownload,
-          show_on_overview: showOnOverview,
+          ...(homeHeroSlot.trim() ? { home_hero_slot: homeHeroSlot.trim() } : {}),
         }),
       });
       if (!docRes.ok) {
@@ -195,30 +200,28 @@ export function UploadModal({
           </>
         )}
 
-        {/* Show on Home toggle */}
+        {/* Home hero slot (optional) */}
         {category && (
-          <div className="mb-4 flex items-center gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showOnOverview}
-              onClick={() => setShowOnOverview(!showOnOverview)}
-              disabled={loading}
-              className="relative h-5 w-9 rounded-full transition-colors"
-              style={{
-                background: showOnOverview ? "var(--accent)" : "var(--border)",
-              }}
-            >
-              <span
-                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
-                style={{
-                  transform: showOnOverview ? "translateX(16px)" : "translateX(0)",
-                }}
-              />
-            </button>
-            <label className="text-xs font-medium text-text-dim">
-              Show on Home page (Overview)
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              Home page hero slot (optional)
             </label>
+            <select
+              value={homeHeroSlot}
+              onChange={(e) => setHomeHeroSlot(e.target.value)}
+              disabled={loading}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            >
+              <option value="">Not shown on home</option>
+              {HERO_CARDS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {heroHomeAdminLabel(c.id)}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              One document per tile; choosing a slot that is already taken replaces the previous doc.
+            </p>
           </div>
         )}
 
