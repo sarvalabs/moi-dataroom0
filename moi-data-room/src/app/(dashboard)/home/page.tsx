@@ -12,6 +12,7 @@ interface ApiDoc {
   description?: string | null;
   category: string;
   show_on_overview?: boolean;
+  file_type?: string;
 }
 
 function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
@@ -44,15 +45,18 @@ function getDocPreview(card: HeroCard): string {
 function PaperCard({
   card,
   docId,
+  fileType,
   onOpen,
 }: {
   card: HeroCard;
   docId?: string;
+  fileType?: string;
   onOpen: (e: React.MouseEvent<HTMLAnchorElement>, id?: string) => void;
 }) {
   const [hov, setHov] = useState(false);
   const docName = getDocPreview(card);
   const docNameMultiline = card.id === "paradigm";
+  const badgeLabel = fileType === "Link" ? "LINK" : "PDF";
 
   return (
     <a
@@ -138,40 +142,21 @@ function PaperCard({
           transition: "border-color 0.2s ease",
         }}
       >
-        {/* Doc icon */}
-        <div
+        <span
           style={{
-            width: 36,
-            height: 44,
-            background: "#1A1A1E",
-            border: "1px solid #222228",
-            borderRadius: 5,
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             flexShrink: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.05em",
+            color: "#7B61FF",
+            background: "rgba(123, 97, 255, 0.12)",
+            border: "1px solid rgba(123, 97, 255, 0.2)",
+            padding: "6px 10px",
+            borderRadius: 6,
           }}
         >
-          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" style={{ opacity: 0.7 }}>
-            <line x1="3" y1="5" x2="11" y2="5" stroke="#7B61FF" strokeWidth="1.4" />
-            <line x1="3" y1="9" x2="9" y2="9" stroke="#7B61FF" strokeWidth="1.4" />
-          </svg>
-          {/* Folded corner */}
-          <div
-            style={{
-              position: "absolute",
-              top: -1,
-              right: -1,
-              width: 10,
-              height: 10,
-              background: "#111113",
-              borderLeft: "1px solid #222228",
-              borderBottom: "1px solid #222228",
-              borderRadius: "0 0 0 3px",
-            }}
-          />
-        </div>
+          {badgeLabel}
+        </span>
 
         {/* Doc text */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -344,8 +329,8 @@ export default function HomePage() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1">
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="min-w-0 flex-1">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -382,9 +367,8 @@ export default function HomePage() {
           MOI Data Room
         </h1>
         <p className="max-w-[560px] text-[17px] leading-[1.7] text-text-dim">
-          The contextual compute network powering the next generation of
-          decentralized applications. Everything you need for due diligence — all
-          in one place.
+          The contextual compute network powering the participant layer of the internet — the
+          context infrastructure of the AI economy.
         </p>
         <div className="mt-8 flex gap-3">
           <a
@@ -409,14 +393,18 @@ export default function HomePage() {
           marginBottom: 48,
         }}
       >
-        {row1.map((card) => (
-          <PaperCard
-            key={card.id}
-            card={card}
-            docId={matchCardToDoc(card, docs)?.id}
-            onOpen={handleOpen}
-          />
-        ))}
+        {row1.map((card) => {
+          const matched = matchCardToDoc(card, docs);
+          return (
+            <PaperCard
+              key={card.id}
+              card={card}
+              docId={matched?.id}
+              fileType={matched?.file_type}
+              onOpen={handleOpen}
+            />
+          );
+        })}
         {row2.map((card) => (
           <AssetCard
             key={card.id}

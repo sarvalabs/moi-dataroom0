@@ -9,6 +9,7 @@ interface DocMeta {
   allowDownload: boolean;
   fileType: string;
   title?: string;
+  isExternal?: boolean;
 }
 
 export default function DocViewerPage() {
@@ -50,6 +51,7 @@ export default function DocViewerPage() {
             allowDownload: data.allowDownload ?? true,
             fileType: data.fileType ?? "PDF",
             title,
+            isExternal: Boolean(data.isExternal),
           });
         }
       } catch (e: any) {
@@ -61,9 +63,9 @@ export default function DocViewerPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Load PDF once we have the URL
+  // Load PDF once we have the URL (not in-page for external / link-only docs)
   useEffect(() => {
-    if (!meta?.url || meta.fileType !== "PDF") return;
+    if (!meta?.url || meta.isExternal || meta.fileType !== "PDF") return;
     let cancelled = false;
     (async () => {
       try {
@@ -110,10 +112,10 @@ export default function DocViewerPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [total]);
 
-  // Non-PDF: redirect to the signed URL in the same tab
+  // Non-PDF and external links: open in a new tab
   useEffect(() => {
-    if (meta && meta.fileType !== "PDF") {
-      window.open(meta.url, "_blank", "noopener");
+    if (meta && (meta.isExternal || meta.fileType !== "PDF")) {
+      window.open(meta.url, "_blank", "noopener,noreferrer");
     }
   }, [meta]);
 
@@ -136,7 +138,7 @@ export default function DocViewerPage() {
     );
   }
 
-  if (meta && meta.fileType !== "PDF") {
+  if (meta && (meta.isExternal || meta.fileType !== "PDF")) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
         <p className="text-sm text-text-muted">

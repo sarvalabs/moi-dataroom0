@@ -132,7 +132,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Button size="md" onClick={() => setShowModal(true)}>
-          + Upload Document
+          + Add Document
         </Button>
       </div>
 
@@ -295,8 +295,11 @@ function EditModal({
   const [description, setDescription] = useState(doc.description ?? "");
   const [category, setCategory] = useState(doc.category);
   const [showOnOverview, setShowOnOverview] = useState(doc.show_on_overview ?? false);
+  const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isLinkOnly = Boolean(doc.external_url) && !doc.file_url;
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -307,19 +310,28 @@ function EditModal({
       setError("Please select a category.");
       return;
     }
+    if (isLinkOnly && !externalUrl.trim()) {
+      setError("External URL is required for link-only documents.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        description: description.trim() || null,
+        category,
+        show_on_overview: showOnOverview,
+      };
+      if (isLinkOnly) {
+        payload.external_url = externalUrl.trim();
+      }
+
       const res = await fetch(`/api/documents/${doc.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          category,
-          show_on_overview: showOnOverview,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -412,6 +424,25 @@ function EditModal({
           </label>
         </div>
 
+        {isLinkOnly ? (
+          <div className="mb-6">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              External URL
+            </label>
+            <input
+              type="url"
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+              disabled={saving}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+          </div>
+        ) : (
+          <p className="mb-6 text-[11px] text-text-muted">
+            This document uses an uploaded file. To change the file, delete it and add again (or add a link-only entry).
+          </p>
+        )}
+
         {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
 
         <div className="flex justify-end gap-2.5">
@@ -460,7 +491,20 @@ function DocRow({
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-        {doc.title}
+        <span>{doc.title}</span>
+        {doc.external_url && !doc.file_url ? (
+          <span
+            style={{
+              marginLeft: 8,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              color: "var(--accent)",
+            }}
+          >
+            LINK
+          </span>
+        ) : null}
       </div>
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {CATEGORY_LABELS[doc.category] ?? doc.category}
@@ -474,9 +518,11 @@ function DocRow({
         </Pill>
       </div>
       <div title={doc.embedding_error ?? undefined}>
-        <Pill variant={embeddingVariant(embStatus)}>
-          {embeddingLabel(embStatus)}
-        </Pill>
+        {!doc.file_url && doc.external_url ? (
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
+        ) : (
+          <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
+        )}
       </div>
       <div>
         <button
@@ -513,7 +559,13 @@ function DocRow({
         {doc.view_count ?? 0}
       </div>
       <div style={{ display: "flex", gap: 6 }}>
-        <Button variant="ghost" size="sm" onClick={onReindex}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReindex}
+          disabled={!doc.file_url}
+          title={!doc.file_url ? "Link-only documents are not indexed" : undefined}
+        >
           Re-index
         </Button>
         <Button variant="ghost" size="sm" onClick={onEdit}>

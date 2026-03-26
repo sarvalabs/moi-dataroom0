@@ -42,15 +42,13 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-bg font-sans text-text">
       <Sidebar />
       <div
+        className="flex min-h-screen min-w-0 w-[calc(100%-230px)] flex-col"
         style={{
           marginLeft: 230,
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: "40px 56px 24px",
-          maxWidth: 960,
+          padding: "40px 56px 0",
           transition: "margin-left 0.3s ease",
           position: "relative",
+          boxSizing: "border-box",
         }}
       >
         {/* Breadcrumb */}
@@ -75,22 +73,8 @@ export default function DashboardLayout({
             </>
           )}
         </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           {children}
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            bottom: 24,
-            right: 56,
-          }}
-        >
-          <Link
-            href="/admin"
-            className="text-[11px] text-text-muted hover:text-text-dim transition-colors"
-          >
-            Admin
-          </Link>
         </div>
       </div>
       <ChatBot />

@@ -18,6 +18,8 @@ export interface Document {
   description: string | null;
   category: DocumentCategory;
   file_url: string | null;
+  /** Public URL (Zenodo, etc.) when the doc is link-only; opens in a new tab. */
+  external_url?: string | null;
   file_type: string;
   status: DocumentStatus;
   embedding_status: EmbeddingStatus;

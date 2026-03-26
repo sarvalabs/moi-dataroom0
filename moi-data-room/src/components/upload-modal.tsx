@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "./button";
 import type { DocumentCategory } from "@/lib/constants";
+import { normalizeExternalUrl } from "@/lib/external-url";
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "contextual_compute", label: "Contextual Compute" },
@@ -31,6 +32,8 @@ export function UploadModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [showOnOverview, setShowOnOverview] = useState(false);
+  const [sourceMode, setSourceMode] = useState<"file" | "link">("file");
+  const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -41,6 +44,9 @@ export function UploadModal({
     setCategory(val as DocumentCategory | "");
     setTitle("");
     setDescription("");
+    setSourceMode("file");
+    setExternalUrl("");
+    setFile(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -59,16 +65,54 @@ export function UploadModal({
   const handleSubmit = async () => {
     setError(null);
 
-    if (!file) {
-      setError("Please choose a file to upload.");
-      return;
-    }
     if (!category) {
       setError("Please select a category.");
       return;
     }
     if (!title.trim()) {
       setError("Title is required.");
+      return;
+    }
+
+    if (sourceMode === "link") {
+      const normalized = normalizeExternalUrl(externalUrl);
+      if (!normalized) {
+        setError("Enter a valid https:// link (e.g. Zenodo DOI landing page).");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const docRes = await fetch("/api/documents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: title.trim(),
+            category,
+            description: description.trim() || null,
+            external_url: normalized,
+            file_type: "Link",
+            allow_download: allowDownload,
+            show_on_overview: showOnOverview,
+          }),
+        });
+        if (!docRes.ok) {
+          const data = await docRes.json().catch(() => ({}));
+          throw new Error(data.error ?? docRes.statusText);
+        }
+        onSuccess?.();
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Save failed.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!file) {
+      setError("Please choose a file to upload.");
       return;
     }
 
@@ -134,9 +178,9 @@ export function UploadModal({
         onClick={(e) => e.stopPropagation()}
         className="w-[440px] max-w-[90vw] rounded-2xl border border-border bg-surface p-8"
       >
-        <h3 className="text-lg font-bold text-text">Upload Document</h3>
+        <h3 className="text-lg font-bold text-text">Add Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Add a new document to the investor data room.
+          Upload a file (PDF, PPTX, DOCX) or paste an external link (Zenodo, etc.).
         </p>
 
         {/* Category */}
@@ -236,13 +280,71 @@ export function UploadModal({
               />
             </button>
             <label className="text-xs font-medium text-text-dim">
-              Allow users to download this file
+              {sourceMode === "link"
+                ? "Allow opening the link"
+                : "Allow users to download this file"}
             </label>
           </div>
         )}
 
-        {/* File drop */}
+        {/* File vs external link */}
         {category && (
+          <div className="mb-4 flex rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setSourceMode("file");
+                setExternalUrl("");
+              }}
+              className="flex-1 rounded-md py-2 text-xs font-semibold transition-colors"
+              style={{
+                background: sourceMode === "file" ? "var(--surface-2)" : "transparent",
+                color: sourceMode === "file" ? "var(--text)" : "var(--text-muted)",
+              }}
+            >
+              Upload file
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setSourceMode("link");
+                setFile(null);
+              }}
+              className="flex-1 rounded-md py-2 text-xs font-semibold transition-colors"
+              style={{
+                background: sourceMode === "link" ? "var(--surface-2)" : "transparent",
+                color: sourceMode === "link" ? "var(--text)" : "var(--text-muted)",
+              }}
+            >
+              External link
+            </button>
+          </div>
+        )}
+
+        {/* External URL */}
+        {category && sourceMode === "link" && (
+          <div className="mb-6">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              URL (https://…)
+            </label>
+            <input
+              type="url"
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+              disabled={loading}
+              placeholder="https://zenodo.org/records/…"
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              Link-only documents are not indexed for the AI chat.
+            </p>
+          </div>
+        )}
+
+        {/* File drop */}
+        {category && sourceMode === "file" && (
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
@@ -273,7 +375,7 @@ export function UploadModal({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Uploading…" : "Upload"}
+            {loading ? (sourceMode === "link" ? "Saving…" : "Uploading…") : sourceMode === "link" ? "Add link" : "Upload"}
           </Button>
         </div>
       </div>

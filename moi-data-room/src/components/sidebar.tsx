@@ -242,14 +242,14 @@ export function Sidebar() {
         onClick={() => setCollapsed(!collapsed)}
       >
         <img
-          src="/moi-logo.jpeg"
+          src="/logo-moi-dark.svg"
           alt="MOI"
           style={{
             width: 32,
             height: 32,
             borderRadius: 10,
             flexShrink: 0,
-            objectFit: "cover",
+            objectFit: "contain",
           }}
         />
         {!collapsed && (

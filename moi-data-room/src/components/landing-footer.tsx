@@ -72,11 +72,11 @@ const SOCIAL_LINKS: {
 
 export function LandingFooter() {
   return (
-    <footer className="mt-auto -mx-14 w-[calc(100%+7rem)] shrink-0 border-t border-[#222228] px-12 py-10 max-[600px]:px-6 max-[600px]:py-8">
-      <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-6 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-6">
+    <footer className="mt-20 -mx-14 w-[calc(100%+7rem)] shrink-0 border-t border-border bg-bg px-12 pb-14 pt-10 max-[600px]:px-6 max-[600px]:pb-10 max-[600px]:pt-8">
+      <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-6 pr-20 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-6 max-[600px]:pr-0">
         <div className="flex items-center gap-6 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-6">
           <img
-            src="/moi-logo.jpeg"
+            src="/logo-moi-dark.svg"
             alt="MOI"
             className="block shrink-0"
             style={{ height: 24, width: "auto" }}
