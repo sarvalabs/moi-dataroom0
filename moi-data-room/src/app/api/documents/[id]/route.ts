@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminRequest } from "@/lib/auth-admin";
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("documents")
+    .select("id, title, description, file_type, category, created_at, view_count, allow_download")
+    .eq("id", id)
+    .eq("status", "published")
+    .single();
+  if (error || !data) {
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  }
+  return NextResponse.json(data);
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

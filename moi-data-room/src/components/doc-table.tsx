@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Pill } from "./pill";
-import { Button } from "./button";
-import { PdfViewer } from "./pdf-viewer";
 import type { DocumentItem } from "@/lib/constants";
 
 function DocRow({
@@ -14,51 +12,11 @@ function DocRow({
   doc: DocumentItem & { id?: string; allow_download?: boolean };
   index: number;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
-
-  const handleView = async () => {
-    if (!doc.id) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ documentId: doc.id }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Download failed");
-
-      const allowDownload = data.allowDownload ?? true;
-      const fileType = data.fileType ?? doc.type;
-
-      if (!allowDownload && fileType === "PDF") {
-        // View-only PDF: open in-app viewer
-        setViewerUrl(data.url);
-      } else if (!allowDownload) {
-        // View-only PPTX/DOCX: open in new tab (inline)
-        window.open(data.url, "_blank", "noopener");
-      } else {
-        // Downloadable: redirect to trigger download
-        window.location.href = data.url;
-      }
-    } catch {
-      alert("Could not open document. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const allowDownload = doc.allow_download ?? true;
-  const buttonLabel = doc.type === "LINK"
-    ? "Visit ↗"
-    : allowDownload
-      ? "View ↓"
-      : "View";
-
   return (
-    <>
+    <Link
+      href={doc.id ? `/doc/${doc.id}` : "#"}
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
       <motion.div
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
@@ -77,27 +35,12 @@ function DocRow({
           {doc.views.toLocaleString()}
         </div>
         <div className="text-right">
-          <span className="hidden group-hover:inline-flex">
-            <Button variant="primary" size="sm" onClick={handleView} disabled={loading}>
-              {loading ? "Opening…" : buttonLabel}
-            </Button>
-          </span>
-          <span className="inline-flex group-hover:hidden">
-            <Button variant="ghost" size="sm" onClick={handleView} disabled={loading}>
-              {loading ? "…" : buttonLabel}
-            </Button>
+          <span className="text-xs font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
+            Open →
           </span>
         </div>
       </motion.div>
-
-      {viewerUrl && (
-        <PdfViewer
-          url={viewerUrl}
-          title={doc.title}
-          onClose={() => setViewerUrl(null)}
-        />
-      )}
-    </>
+    </Link>
   );
 }
 

@@ -29,10 +29,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "home", label: "Home", icon: "⌂", href: "/home" },
   { id: "contextual_compute", label: "Contextual Compute", icon: "⬡", href: "/contextual-compute" },
   { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
-  { id: "research", label: "Research", icon: "◬", href: "/research" },
-  { id: "business", label: "Business & GTM", icon: "◧", href: "/business" },
-  { id: "tokenomics", label: "Tokenomics", icon: "◉", href: "/tokenomics" },
   { id: "usecases", label: "Use Cases", icon: "◫", href: "/usecases" },
+  { id: "tokenomics", label: "Tokenomics", icon: "◉", href: "/tokenomics" },
+  { id: "business", label: "Business & GTM", icon: "◧", href: "/business" },
+  { id: "research", label: "Research", icon: "◬", href: "/research" },
 ] as const;
 
 export const STATS = [
