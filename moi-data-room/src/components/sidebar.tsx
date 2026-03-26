@@ -211,6 +211,7 @@ function SidebarGroup({
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [adminHov, setAdminHov] = useState(false);
 
   return (
     <div
@@ -302,6 +303,51 @@ export function Sidebar() {
             />
           )
         )}
+      </div>
+
+      <div
+        style={{
+          marginTop: "auto",
+          borderTop: "1px solid var(--border)",
+          margin: collapsed ? "12px 8px 0" : "12px 16px 0",
+          padding: collapsed ? "12px 0 16px" : "12px 0 20px",
+        }}
+      >
+        <Link
+          href="/admin"
+          title="Admin"
+          onMouseEnter={() => setAdminHov(true)}
+          onMouseLeave={() => setAdminHov(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: collapsed ? "10px 12px" : "9px 14px",
+            borderRadius: 10,
+            textDecoration: "none",
+            fontSize: 13,
+            fontWeight: pathname === "/admin" ? 600 : 500,
+            color:
+              pathname === "/admin"
+                ? "var(--accent)"
+                : adminHov
+                  ? "var(--text)"
+                  : "var(--text-muted)",
+            background:
+              pathname === "/admin"
+                ? "var(--accent-dim)"
+                : adminHov
+                  ? "rgba(255,255,255,0.03)"
+                  : "transparent",
+            transition: "color 0.15s ease, background 0.15s ease",
+            justifyContent: collapsed ? "center" : "flex-start",
+          }}
+        >
+          <span style={{ fontSize: 16, width: 20, textAlign: "center", flexShrink: 0 }}>
+            ⧉
+          </span>
+          {!collapsed && <span>Admin</span>}
+        </Link>
       </div>
     </div>
   );

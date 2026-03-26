@@ -71,16 +71,12 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (filePath && externalUrl) {
-    return NextResponse.json(
-      { error: "Use either an uploaded file or an external URL, not both" },
-      { status: 400 }
-    );
-  }
 
-  const resolvedFileType = externalUrl
-    ? (typeof file_type === "string" && file_type.trim() ? file_type.trim() : "Link")
-    : (file_type ?? "PDF");
+  const resolvedFileType = filePath
+    ? (file_type ?? "PDF")
+    : typeof file_type === "string" && file_type.trim()
+      ? file_type.trim()
+      : "Link";
 
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -96,7 +92,7 @@ export async function POST(request: Request) {
       allow_download: allow_download ?? true,
       show_on_overview: show_on_overview ?? false,
       uploaded_by: null,
-      embedding_status: externalUrl ? "completed" : "pending",
+      embedding_status: filePath ? "pending" : "completed",
       embedding_error: null,
     })
     .select()

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { BentoCard } from "@/components/bento-card";
 import { Button } from "@/components/button";
 import { Pill } from "@/components/pill";
 import { UploadModal } from "@/components/upload-modal";
+import { normalizeExternalUrl } from "@/lib/external-url";
 import type { Document } from "@/lib/types";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -296,6 +297,8 @@ function EditModal({
   const [category, setCategory] = useState(doc.category);
   const [showOnOverview, setShowOnOverview] = useState(doc.show_on_overview ?? false);
   const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
+  const [attachIndexPdf, setAttachIndexPdf] = useState<File | null>(null);
+  const attachPdfRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -310,13 +313,61 @@ function EditModal({
       setError("Please select a category.");
       return;
     }
-    if (isLinkOnly && !externalUrl.trim()) {
-      setError("External URL is required for link-only documents.");
-      return;
+    if (isLinkOnly) {
+      const z = normalizeExternalUrl(externalUrl);
+      if (!z) {
+        setError("External URL must be a valid https:// link.");
+        return;
+      }
+    }
+    if (!isLinkOnly && externalUrl.trim()) {
+      const z = normalizeExternalUrl(externalUrl);
+      if (!z) {
+        setError("Public URL must be a valid https:// link or leave it empty.");
+        return;
+      }
     }
     setSaving(true);
     setError(null);
     try {
+      if (isLinkOnly && attachIndexPdf) {
+        if (
+          attachIndexPdf.type !== "application/pdf" &&
+          !attachIndexPdf.name.toLowerCase().endsWith(".pdf")
+        ) {
+          throw new Error("Attachment for indexing must be a PDF.");
+        }
+        const fd = new FormData();
+        fd.set("file", attachIndexPdf);
+        fd.set("category", category);
+        const up = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+        if (!up.ok) {
+          const data = await up.json().catch(() => ({}));
+          throw new Error(data.error ?? "Upload failed");
+        }
+        const { path } = await up.json();
+        const patchRes = await fetch(`/api/documents/${doc.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            file_url: path,
+            file_type: "PDF",
+          }),
+        });
+        if (!patchRes.ok) {
+          const data = await patchRes.json().catch(() => ({}));
+          throw new Error(data.error ?? "Failed to attach file");
+        }
+        await fetch("/api/documents/reembed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ documentId: doc.id }),
+        });
+        setAttachIndexPdf(null);
+      }
+
       const payload: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || null,
@@ -324,7 +375,11 @@ function EditModal({
         show_on_overview: showOnOverview,
       };
       if (isLinkOnly) {
-        payload.external_url = externalUrl.trim();
+        payload.external_url = normalizeExternalUrl(externalUrl)!;
+      } else {
+        payload.external_url = externalUrl.trim()
+          ? normalizeExternalUrl(externalUrl) ?? null
+          : null;
       }
 
       const res = await fetch(`/api/documents/${doc.id}`, {
@@ -424,23 +479,50 @@ function EditModal({
           </label>
         </div>
 
-        {isLinkOnly ? (
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            {isLinkOnly ? "External URL (required)" : "Public page / Zenodo URL (optional)"}
+          </label>
+          <input
+            type="url"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+            disabled={saving}
+            placeholder={isLinkOnly ? "https://zenodo.org/records/…" : "https://…"}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+          {!isLinkOnly && (
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              If set, document lists open this link; the in-app viewer uses the uploaded file. To replace
+              the file, delete this document and upload again.
+            </p>
+          )}
+        </div>
+
+        {isLinkOnly && (
           <div className="mb-6">
             <label className="mb-1.5 block text-xs font-semibold text-text-dim">
-              External URL
+              Attach PDF for AI indexing (optional)
             </label>
             <input
-              type="url"
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
+              ref={attachPdfRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
               disabled={saving}
-              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+              onChange={(e) => setAttachIndexPdf(e.target.files?.[0] ?? null)}
             />
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => attachPdfRef.current?.click()}
+              className="w-full rounded-lg border border-dashed border-border bg-surface-2 px-3 py-3 text-left text-[13px] text-text-dim transition-colors hover:border-accent"
+            >
+              {attachIndexPdf
+                ? attachIndexPdf.name
+                : "Choose PDF — stored privately, embedded for chat"}
+            </button>
           </div>
-        ) : (
-          <p className="mb-6 text-[11px] text-text-muted">
-            This document uses an uploaded file. To change the file, delete it and add again (or add a link-only entry).
-          </p>
         )}
 
         {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
@@ -492,7 +574,7 @@ function DocRow({
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
         <span>{doc.title}</span>
-        {doc.external_url && !doc.file_url ? (
+        {doc.external_url ? (
           <span
             style={{
               marginLeft: 8,
@@ -502,7 +584,7 @@ function DocRow({
               color: "var(--accent)",
             }}
           >
-            LINK
+            {doc.file_url ? "ZENODO" : "LINK"}
           </span>
         ) : null}
       </div>

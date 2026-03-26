@@ -34,11 +34,16 @@ export function UploadModal({
   const [showOnOverview, setShowOnOverview] = useState(false);
   const [sourceMode, setSourceMode] = useState<"file" | "link">("file");
   const [externalUrl, setExternalUrl] = useState("");
+  /** Optional Zenodo / landing page when uploading a file (opens that link from lists; PDF still indexes AI). */
+  const [zenodoCompanion, setZenodoCompanion] = useState("");
+  /** Optional PDF to store and index when the primary source is an external link. */
+  const [pdfForIndexing, setPdfForIndexing] = useState<File | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const linkPdfInputRef = useRef<HTMLInputElement>(null);
 
   const handleCategoryChange = (val: string) => {
     setCategory(val as DocumentCategory | "");
@@ -46,6 +51,8 @@ export function UploadModal({
     setDescription("");
     setSourceMode("file");
     setExternalUrl("");
+    setZenodoCompanion("");
+    setPdfForIndexing(null);
     setFile(null);
   };
 
@@ -83,6 +90,30 @@ export function UploadModal({
 
       setLoading(true);
       try {
+        let storagePath: string | null = null;
+        if (pdfForIndexing) {
+          if (
+            pdfForIndexing.type !== "application/pdf" &&
+            !pdfForIndexing.name.toLowerCase().endsWith(".pdf")
+          ) {
+            throw new Error("Optional indexer attachment must be a PDF.");
+          }
+          const formData = new FormData();
+          formData.set("file", pdfForIndexing);
+          formData.set("category", category);
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          if (!uploadRes.ok) {
+            const data = await uploadRes.json().catch(() => ({}));
+            throw new Error(data.error ?? uploadRes.statusText);
+          }
+          const { path } = await uploadRes.json();
+          storagePath = path;
+        }
+
         const docRes = await fetch("/api/documents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -92,7 +123,8 @@ export function UploadModal({
             category,
             description: description.trim() || null,
             external_url: normalized,
-            file_type: "Link",
+            file_url: storagePath,
+            file_type: storagePath ? "PDF" : "Link",
             allow_download: allowDownload,
             show_on_overview: showOnOverview,
           }),
@@ -141,6 +173,8 @@ export function UploadModal({
       }
       const { path } = await uploadRes.json();
 
+      const companion = normalizeExternalUrl(zenodoCompanion);
+
       const docRes = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,6 +184,7 @@ export function UploadModal({
           category: submission.category,
           description: submission.description,
           file_url: path,
+          ...(companion ? { external_url: companion } : {}),
           file_type: submission.fileType,
           allow_download: submission.allowDownload,
           show_on_overview: submission.showOnOverview,
@@ -180,7 +215,9 @@ export function UploadModal({
       >
         <h3 className="text-lg font-bold text-text">Add Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Upload a file (PDF, PPTX, DOCX) or paste an external link (Zenodo, etc.).
+          Upload a file for the data room and AI indexing, and optionally add a Zenodo (or other)
+          public page. Or use an external link as the primary open target and optionally attach a PDF
+          copy for indexing.
         </p>
 
         {/* Category */}
@@ -296,6 +333,7 @@ export function UploadModal({
               onClick={() => {
                 setSourceMode("file");
                 setExternalUrl("");
+                setPdfForIndexing(null);
               }}
               className="flex-1 rounded-md py-2 text-xs font-semibold transition-colors"
               style={{
@@ -311,6 +349,7 @@ export function UploadModal({
               onClick={() => {
                 setSourceMode("link");
                 setFile(null);
+                setZenodoCompanion("");
               }}
               className="flex-1 rounded-md py-2 text-xs font-semibold transition-colors"
               style={{
@@ -338,8 +377,33 @@ export function UploadModal({
               className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
             />
             <p className="mt-1.5 text-[11px] text-text-muted">
-              Link-only documents are not indexed for the AI chat.
+              Opens on Zenodo (or your URL) from document lists. Add a PDF below to index the same
+              content for the AI chat.
             </p>
+            <div className="mt-4">
+              <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+                PDF for AI indexing (optional)
+              </label>
+              <input
+                ref={linkPdfInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                disabled={loading}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  setPdfForIndexing(f ?? null);
+                }}
+              />
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => linkPdfInputRef.current?.click()}
+                className="w-full rounded-lg border border-dashed border-border bg-surface-2 px-3 py-3 text-left text-[13px] text-text-dim transition-colors hover:border-accent"
+              >
+                {pdfForIndexing ? pdfForIndexing.name : "Click to attach PDF (stored privately, embedded for chat)"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -363,6 +427,26 @@ export function UploadModal({
             <div className="text-[13px] text-text-dim">
               {file ? file.name : "Drop file or click to browse"}
             </div>
+          </div>
+        )}
+
+        {category && sourceMode === "file" && (
+          <div className="mb-6">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              Public page URL (optional)
+            </label>
+            <input
+              type="url"
+              value={zenodoCompanion}
+              onChange={(e) => setZenodoCompanion(e.target.value)}
+              disabled={loading}
+              placeholder="https://zenodo.org/records/…"
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              If set, “Open” from category lists and home uses this link. The in-app viewer still
+              uses your uploaded file.
+            </p>
           </div>
         )}
 
