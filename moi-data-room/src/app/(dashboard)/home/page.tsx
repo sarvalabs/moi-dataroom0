@@ -1,84 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
 import { StatCardsGrid } from "@/components/stat-card";
 import { Button } from "@/components/button";
-import { DOC_SLOTS } from "@/lib/constants";
-
-const DOT_COLORS: Record<string, string> = {
-  "Litepaper": "#7B61FF",
-  "Slide Deck": "#2DD4BF",
-  "Yellow Paper": "#F59E0B",
-  "Contextual Compute": "#EF4444",
-};
-
-interface QuickDoc {
-  title: string;
-  sub: string;
-  docId?: string;
-}
-
-function QuickAccessRow({
-  item,
-  isLast,
-}: {
-  item: QuickDoc;
-  isLast: boolean;
-}) {
-  const router = useRouter();
-  const [hov, setHov] = useState(false);
-  const dot = DOT_COLORS[item.title] ?? "var(--accent)";
-
-  const handleClick = () => {
-    if (!item.docId) return;
-    router.push(`/doc/${item.docId}`);
-  };
-
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onClick={handleClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 0",
-        borderBottom: isLast ? "none" : "0.5px solid var(--border)",
-        cursor: item.docId ? "pointer" : "default",
-        borderRadius: 6,
-        marginLeft: -8,
-        marginRight: -8,
-        paddingLeft: 8,
-        paddingRight: 8,
-        background: hov ? "rgba(255,255,255,0.03)" : "transparent",
-        opacity: item.docId ? 1 : 0.5,
-        transition: "background 0.15s ease",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: dot,
-            flexShrink: 0,
-          }}
-        />
-        <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-          {item.title}
-        </span>
-        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {item.sub}
-        </span>
-      </div>
-      <span style={{ fontSize: 13, color: "var(--text-dim)" }}>↗</span>
-    </div>
-  );
-}
+import { HERO_CARDS, type HeroCard } from "@/lib/constants";
 
 interface ApiDoc {
   id: string;
@@ -87,41 +14,301 @@ interface ApiDoc {
   category: string;
 }
 
-function matchDoc(
-  slotCategory: string,
-  docs: ApiDoc[]
-): ApiDoc | undefined {
-  return docs.find((d) => d.category === slotCategory);
+function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
+  const byCategory = docs.filter((d) => d.category === card.matchCategory);
+  if (card.matchTitleHint) {
+    const byTitle = byCategory.find((d) =>
+      d.title.toLowerCase().includes(card.matchTitleHint!.toLowerCase())
+    );
+    if (byTitle) return byTitle;
+  }
+  return byCategory[0];
 }
 
-export default function HomePage() {
-  const [quickDocs, setQuickDocs] = useState<QuickDoc[]>(
-    DOC_SLOTS.map((s) => ({ title: s.label, sub: s.sub }))
-  );
+function useOpenDoc() {
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const linkDocs = useCallback(async () => {
+  const openDoc = async (docId: string) => {
+    if (loadingId) return;
+    setLoadingId(docId);
+    try {
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ documentId: docId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Could not open document. Please try again.");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  return { openDoc, loadingId };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Top Row — Research Paper Card                                      */
+/* ------------------------------------------------------------------ */
+
+function PaperCard({
+  card,
+  docId,
+  index,
+  loadingId,
+  onOpen,
+}: {
+  card: HeroCard;
+  docId?: string;
+  index: number;
+  loadingId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const [hov, setHov] = useState(false);
+  const isLoading = loadingId === docId;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: "#141416",
+        border: "1px solid",
+        borderColor: hov ? "rgba(123, 97, 255, 0.3)" : "#222228",
+        borderTop: "2px solid #7B61FF",
+        borderRadius: 16,
+        padding: 28,
+        position: "relative",
+        overflow: "hidden",
+        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        boxShadow: hov ? "0 0 40px rgba(123, 97, 255, 0.06)" : "none",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Hover glow overlay */}
+      {hov && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background:
+              "radial-gradient(circle at 100% 0%, rgba(123, 97, 255, 0.04), transparent 60%)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Tag + Icon row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "#5A5A66",
+          }}
+        >
+          {card.tag}
+        </span>
+        <FileText size={18} color="#5A5A66" strokeWidth={1.5} />
+      </div>
+
+      {/* Title */}
+      <h3
+        style={{
+          fontSize: 24,
+          fontWeight: 700,
+          color: "#E8E8ED",
+          letterSpacing: "-0.02em",
+          marginBottom: 16,
+          fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
+        }}
+      >
+        {card.title}
+      </h3>
+
+      {/* Description box */}
+      <div
+        style={{
+          background: "#1A1A1E",
+          border: "1px solid #222228",
+          borderRadius: 10,
+          padding: 16,
+          marginBottom: 24,
+        }}
+      >
+        <p
+          style={{
+            fontSize: 14,
+            fontStyle: "italic",
+            lineHeight: 1.6,
+            color: "#8B8B96",
+            margin: 0,
+          }}
+        >
+          {card.tagline}
+        </p>
+      </div>
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Button */}
+      <div>
+        <button
+          onClick={() => docId && onOpen(docId)}
+          disabled={!docId || !!loadingId}
+          style={{
+            background: "#7B61FF",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 600,
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            cursor: docId ? "pointer" : "not-allowed",
+            opacity: docId ? 1 : 0.5,
+            transition: "all 0.2s ease",
+            transform: hov && docId ? "translateY(-1px)" : "translateY(0)",
+            boxShadow: hov && docId ? "0 0 20px rgba(123, 97, 255, 0.4)" : "none",
+          }}
+        >
+          {isLoading ? "Opening..." : `${card.buttonLabel} ↗`}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bottom Row — Asset Card                                            */
+/* ------------------------------------------------------------------ */
+
+function AssetCard({
+  card,
+  docId,
+  index,
+  loadingId,
+  onOpen,
+}: {
+  card: HeroCard;
+  docId?: string;
+  index: number;
+  loadingId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const [hov, setHov] = useState(false);
+  const [linkHov, setLinkHov] = useState(false);
+  const isLoading = loadingId === docId;
+  const isPlaceholder = !docId;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: "#141416",
+        border: "1px solid",
+        borderColor: hov ? "#333" : "#222228",
+        borderRadius: 16,
+        padding: "24px 28px",
+        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Title */}
+      <h3
+        style={{
+          fontSize: 20,
+          fontWeight: 600,
+          color: "#E8E8ED",
+          fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
+          margin: 0,
+        }}
+      >
+        {card.title}
+      </h3>
+
+      {/* Subtitle */}
+      <p style={{ fontSize: 13, color: "#5A5A66", marginTop: 4, marginBottom: 20 }}>
+        {card.tagline}
+      </p>
+
+      {/* Text link */}
+      {isPlaceholder ? (
+        <span style={{ fontSize: 13, fontWeight: 500, color: "#5A5A66" }}>
+          Coming Soon
+        </span>
+      ) : (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => docId && onOpen(docId)}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && docId) {
+              e.preventDefault();
+              onOpen(docId);
+            }
+          }}
+          onMouseEnter={() => setLinkHov(true)}
+          onMouseLeave={() => setLinkHov(false)}
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: linkHov ? "#7B61FF" : "#8B8B96",
+            cursor: "pointer",
+            transition: "color 0.15s ease",
+            width: "fit-content",
+          }}
+        >
+          {isLoading ? "Opening..." : `${card.buttonLabel} ↗`}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export default function HomePage() {
+  const [docs, setDocs] = useState<ApiDoc[]>([]);
+  const { openDoc, loadingId } = useOpenDoc();
+
+  const fetchDocs = useCallback(async () => {
     try {
       const res = await fetch("/api/documents", { credentials: "include" });
       if (!res.ok) return;
-      const docs: ApiDoc[] = await res.json();
-      setQuickDocs(
-        DOC_SLOTS.map((s) => {
-          const matched = matchDoc(s.slot, docs);
-          return {
-            title: matched?.title ?? s.label,
-            sub: matched?.description ?? s.sub,
-            docId: matched?.id,
-          };
-        })
-      );
+      const data: ApiDoc[] = await res.json();
+      setDocs(Array.isArray(data) ? data : []);
     } catch {
-      // keep fallback
+      // keep empty
     }
   }, []);
 
   useEffect(() => {
-    linkDocs();
-  }, [linkDocs]);
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const row1 = HERO_CARDS.filter((c) => c.row === 1);
+  const row2 = HERO_CARDS.filter((c) => c.row === 2);
 
   return (
     <div>
@@ -174,32 +361,53 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* Quick Access */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        style={{ marginBottom: 48 }}
+      {/* Row 1 — Research Paper Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 20,
+          marginBottom: 20,
+        }}
       >
-        <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-          Quick Access
-        </h3>
-        <div>
-          {quickDocs.map((item, i) => (
-            <QuickAccessRow
-              key={item.title}
-              item={item}
-              isLast={i === quickDocs.length - 1}
-            />
-          ))}
-        </div>
-      </motion.div>
+        {row1.map((card, i) => (
+          <PaperCard
+            key={card.id}
+            card={card}
+            docId={matchCardToDoc(card, docs)?.id}
+            index={i}
+            loadingId={loadingId}
+            onOpen={openDoc}
+          />
+        ))}
+      </div>
+
+      {/* Row 2 — Asset Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 20,
+          marginBottom: 48,
+        }}
+      >
+        {row2.map((card, i) => (
+          <AssetCard
+            key={card.id}
+            card={card}
+            docId={matchCardToDoc(card, docs)?.id}
+            index={row1.length + i}
+            loadingId={loadingId}
+            onOpen={openDoc}
+          />
+        ))}
+      </div>
 
       {/* Stats Grid */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
       >
         <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
           Network & Community

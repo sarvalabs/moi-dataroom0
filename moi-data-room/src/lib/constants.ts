@@ -44,18 +44,65 @@ export const STATS = [
 ] as const;
 
 /* ------------------------------------------------------------------ */
-/*  Fixed document slots — the data room has exactly these 4 docs      */
+/*  Home page hero card grid                                           */
 /* ------------------------------------------------------------------ */
-export interface DocSlot {
-  slot: DocumentCategory;
-  label: string;
-  sub: string;
+export interface HeroCard {
+  id: string;
+  title: string;
+  tag?: string;
+  tagline: string;
+  matchCategory: DocumentCategory;
+  matchTitleHint?: string;
+  row: 1 | 2;
+  buttonLabel: string;
 }
 
-export const DOC_SLOTS: readonly DocSlot[] = [
-  { slot: "overview", label: "Litepaper", sub: "MOI protocol overview" },
-  { slot: "business", label: "Slide Deck", sub: "Investor presentation" },
-  { slot: "engineering", label: "Yellow Paper", sub: "Protocol specification" },
-  { slot: "contextual_compute", label: "Contextual Compute", sub: "The general theory of computation" },
+export const HERO_CARDS: readonly HeroCard[] = [
+  {
+    id: "foundation",
+    title: "Foundation",
+    tag: "PAPER · RESEARCH",
+    tagline: "Formal mathematical framework underpinning the MOI protocol",
+    matchCategory: "engineering",
+    matchTitleHint: "Yellow",
+    row: 1,
+    buttonLabel: "Read Paper",
+  },
+  {
+    id: "paradigm",
+    title: "Paradigm",
+    tag: "PAPER · RESEARCH",
+    tagline: "A participant-indexed model redefining computation",
+    matchCategory: "contextual_compute",
+    row: 1,
+    buttonLabel: "Read Paper",
+  },
+  {
+    id: "network",
+    title: "Network",
+    tag: "PAPER · WHITEPAPER",
+    tagline: "The blueprint for decentralized context-aware infrastructure",
+    matchCategory: "overview",
+    row: 1,
+    buttonLabel: "Read Paper",
+  },
+  {
+    id: "pitch-deck",
+    title: "Pitch Deck",
+    tagline: "Investor presentation",
+    matchCategory: "business",
+    matchTitleHint: "Slide",
+    row: 2,
+    buttonLabel: "Open",
+  },
+  {
+    id: "two-pager",
+    title: "2 Pager",
+    tagline: "Executive summary",
+    matchCategory: "overview",
+    matchTitleHint: "2 Pager",
+    row: 2,
+    buttonLabel: "Open",
+  },
 ] as const;
 
