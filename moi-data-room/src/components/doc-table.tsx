@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Pill } from "./pill";
 import type { DocumentItem } from "@/lib/constants";
@@ -12,10 +12,44 @@ function DocRow({
   doc: DocumentItem & { id?: string; allow_download?: boolean };
   index: number;
 }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = async () => {
+    if (!doc.id || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ documentId: doc.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Could not open document. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Link
-      href={doc.id ? `/doc/${doc.id}` : "#"}
-      style={{ textDecoration: "none", color: "inherit" }}
+    <div
+      onClick={handleOpen}
+      role="button"
+      tabIndex={doc.id ? 0 : -1}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          void handleOpen();
+        }
+      }}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+        pointerEvents: doc.id ? "auto" : "none",
+      }}
     >
       <motion.div
         initial={{ opacity: 0, x: -8 }}
@@ -36,11 +70,11 @@ function DocRow({
         </div>
         <div className="text-right">
           <span className="text-xs font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
-            Open →
+            {loading ? "Opening..." : "Open in new tab ↗"}
           </span>
         </div>
       </motion.div>
-    </Link>
+    </div>
   );
 }
 

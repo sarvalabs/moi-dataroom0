@@ -104,5 +104,14 @@ export const HERO_CARDS: readonly HeroCard[] = [
     row: 2,
     buttonLabel: "Open",
   },
+  {
+    id: "gtm-deck",
+    title: "GTM Deck",
+    tagline: "Go-to-market strategy",
+    matchCategory: "business",
+    matchTitleHint: "GTM",
+    row: 2,
+    buttonLabel: "Open",
+  },
 ] as const;
 

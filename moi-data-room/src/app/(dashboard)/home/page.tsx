@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FileText } from "lucide-react";
 import { StatCardsGrid } from "@/components/stat-card";
 import { Button } from "@/components/button";
 import { HERO_CARDS, type HeroCard } from "@/lib/constants";
@@ -25,272 +24,269 @@ function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
   return byCategory[0];
 }
 
-function useOpenDoc() {
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-
-  const openDoc = async (docId: string) => {
-    if (loadingId) return;
-    setLoadingId(docId);
-    try {
-      const res = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ documentId: docId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
-      window.open(data.url, "_blank", "noopener,noreferrer");
-    } catch {
-      alert("Could not open document. Please try again.");
-    } finally {
-      setLoadingId(null);
-    }
-  };
-
-  return { openDoc, loadingId };
+function getDocPreview(card: HeroCard) {
+  switch (card.id) {
+    case "foundation":
+      return { name: "MOI Mathematics Paper", meta: "PDF · 42 pages" };
+    case "paradigm":
+      return { name: "Contextual Compute Paper", meta: "PDF · 38 pages" };
+    case "network":
+      return { name: "MOI Network Whitepaper", meta: "PDF · 56 pages" };
+    default:
+      return { name: card.title, meta: "PDF" };
+  }
 }
-
-/* ------------------------------------------------------------------ */
-/*  Top Row — Research Paper Card                                      */
-/* ------------------------------------------------------------------ */
 
 function PaperCard({
   card,
   docId,
-  index,
-  loadingId,
   onOpen,
 }: {
   card: HeroCard;
   docId?: string;
-  index: number;
-  loadingId: string | null;
-  onOpen: (id: string) => void;
+  onOpen: (e: React.MouseEvent<HTMLAnchorElement>, id?: string) => void;
 }) {
   const [hov, setHov] = useState(false);
-  const isLoading = loadingId === docId;
+  const preview = getDocPreview(card);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+    <a
+      href="#"
+      onClick={(e) => onOpen(e, docId)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: "#141416",
-        border: "1px solid",
-        borderColor: hov ? "rgba(123, 97, 255, 0.3)" : "#222228",
-        borderTop: "2px solid #7B61FF",
-        borderRadius: 16,
-        padding: 28,
-        position: "relative",
-        overflow: "hidden",
-        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-        boxShadow: hov ? "0 0 40px rgba(123, 97, 255, 0.06)" : "none",
+        textDecoration: "none",
         display: "flex",
         flexDirection: "column",
+        background: "#141416",
+        borderStyle: "solid",
+        borderWidth: "2px 1px 1px 1px",
+        borderTopColor: "#7B61FF",
+        borderRightColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
+        borderBottomColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
+        borderLeftColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
+        borderRadius: 16,
+        padding: "26px 24px 24px",
+        minHeight: 305,
+        transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+        boxShadow: hov ? "0 8px 40px rgba(0,0,0,0.25)" : "none",
       }}
     >
-      {/* Hover glow overlay */}
-      {hov && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background:
-              "radial-gradient(circle at 100% 0%, rgba(123, 97, 255, 0.04), transparent 60%)",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
-      {/* Tag + Icon row */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+      {/* Tag */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
         <span
           style={{
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
             color: "#5A5A66",
           }}
         >
           {card.tag}
         </span>
-        <FileText size={18} color="#5A5A66" strokeWidth={1.5} />
       </div>
 
       {/* Title */}
       <h3
         style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: "#E8E8ED",
-          letterSpacing: "-0.02em",
-          marginBottom: 16,
           fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
+          fontSize: 28,
+          fontWeight: 700,
+          letterSpacing: "-0.03em",
+          color: "#fff",
+          margin: "0 0 8px 0",
         }}
       >
         {card.title}
       </h3>
 
-      {/* Description box */}
-      <div
+      {/* Description */}
+      <p
         style={{
-          background: "#1A1A1E",
-          border: "1px solid #222228",
-          borderRadius: 10,
-          padding: 16,
-          marginBottom: 24,
+          fontSize: 14,
+          fontStyle: "italic",
+          color: "#8B8B96",
+          lineHeight: 1.55,
+          margin: "0 0 22px 0",
+          flexGrow: 1,
         }}
       >
-        <p
+        {card.tagline}
+      </p>
+
+      {/* Doc Preview */}
+      <div
+        style={{
+          background: "#111113",
+          border: "1px solid",
+          borderColor: hov ? "rgba(123,97,255,0.2)" : "#222228",
+          borderRadius: 10,
+          padding: "14px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          transition: "border-color 0.2s ease",
+        }}
+      >
+        {/* Doc icon */}
+        <div
           style={{
-            fontSize: 14,
-            fontStyle: "italic",
-            lineHeight: 1.6,
-            color: "#8B8B96",
-            margin: 0,
+            width: 36,
+            height: 44,
+            background: "#1A1A1E",
+            border: "1px solid #222228",
+            borderRadius: 5,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
         >
-          {card.tagline}
-        </p>
-      </div>
+          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" style={{ opacity: 0.7 }}>
+            <line x1="3" y1="5" x2="11" y2="5" stroke="#7B61FF" strokeWidth="1.4" />
+            <line x1="3" y1="9" x2="9" y2="9" stroke="#7B61FF" strokeWidth="1.4" />
+          </svg>
+          {/* Folded corner */}
+          <div
+            style={{
+              position: "absolute",
+              top: -1,
+              right: -1,
+              width: 10,
+              height: 10,
+              background: "#111113",
+              borderLeft: "1px solid #222228",
+              borderBottom: "1px solid #222228",
+              borderRadius: "0 0 0 3px",
+            }}
+          />
+        </div>
 
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
+        {/* Doc text */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#E8E8ED",
+              whiteSpace: "nowrap" as const,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {preview.name}
+          </div>
+          <div style={{ fontSize: 11, color: "#5A5A66", marginTop: 2 }}>
+            {preview.meta}
+          </div>
+        </div>
 
-      {/* Button */}
-      <div>
-        <button
-          onClick={() => docId && onOpen(docId)}
-          disabled={!docId || !!loadingId}
+        {/* Arrow */}
+        <div
           style={{
-            background: "#7B61FF",
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 600,
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 20px",
-            cursor: docId ? "pointer" : "not-allowed",
-            opacity: docId ? 1 : 0.5,
-            transition: "all 0.2s ease",
-            transform: hov && docId ? "translateY(-1px)" : "translateY(0)",
-            boxShadow: hov && docId ? "0 0 20px rgba(123, 97, 255, 0.4)" : "none",
+            color: "#5A5A66",
+            opacity: hov ? 1 : 0.4,
+            transform: hov ? "translate(1px, -1px)" : "translate(0, 0)",
+            transition: "opacity 0.2s ease, transform 0.2s ease",
+            flexShrink: 0,
+            display: "flex",
           }}
         >
-          {isLoading ? "Opening..." : `${card.buttonLabel} ↗`}
-        </button>
+          <svg viewBox="0 0 16 16" width="14" height="14">
+            <path
+              d="M5 11L11 5M7 5h4v4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </div>
-    </motion.div>
+    </a>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Bottom Row — Asset Card                                            */
-/* ------------------------------------------------------------------ */
 
 function AssetCard({
   card,
   docId,
-  index,
-  loadingId,
   onOpen,
 }: {
   card: HeroCard;
   docId?: string;
-  index: number;
-  loadingId: string | null;
-  onOpen: (id: string) => void;
+  onOpen: (e: React.MouseEvent<HTMLAnchorElement>, id?: string) => void;
 }) {
   const [hov, setHov] = useState(false);
-  const [linkHov, setLinkHov] = useState(false);
-  const isLoading = loadingId === docId;
-  const isPlaceholder = !docId;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+    <a
+      href="#"
+      onClick={(e) => onOpen(e, docId)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
+        textDecoration: "none",
         background: "#141416",
         border: "1px solid",
         borderColor: hov ? "#333" : "#222228",
-        borderRadius: 16,
-        padding: "24px 28px",
-        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        borderRadius: 14,
+        padding: "22px 26px",
         display: "flex",
-        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        transition: "border-color 0.2s ease",
       }}
     >
-      {/* Title */}
-      <h3
-        style={{
-          fontSize: 20,
-          fontWeight: 600,
-          color: "#E8E8ED",
-          fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
-          margin: 0,
-        }}
-      >
-        {card.title}
-      </h3>
-
-      {/* Subtitle */}
-      <p style={{ fontSize: 13, color: "#5A5A66", marginTop: 4, marginBottom: 20 }}>
-        {card.tagline}
-      </p>
-
-      {/* Text link */}
-      {isPlaceholder ? (
-        <span style={{ fontSize: 13, fontWeight: 500, color: "#5A5A66" }}>
-          Coming Soon
-        </span>
-      ) : (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={() => docId && onOpen(docId)}
-          onKeyDown={(e) => {
-            if ((e.key === "Enter" || e.key === " ") && docId) {
-              e.preventDefault();
-              onOpen(docId);
-            }
-          }}
-          onMouseEnter={() => setLinkHov(true)}
-          onMouseLeave={() => setLinkHov(false)}
+      <div>
+        <h3
           style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: linkHov ? "#7B61FF" : "#8B8B96",
-            cursor: "pointer",
-            transition: "color 0.15s ease",
-            width: "fit-content",
+            fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
+            fontSize: 17,
+            fontWeight: 600,
+            color: "#E8E8ED",
+            margin: "0 0 2px 0",
           }}
         >
-          {isLoading ? "Opening..." : `${card.buttonLabel} ↗`}
-        </span>
-      )}
-    </motion.div>
+          {card.title}
+        </h3>
+        <p style={{ fontSize: 13, color: "#5A5A66", margin: 0 }}>
+          {card.tagline}
+        </p>
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: hov ? "#7B61FF" : "#8B8B96",
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          transition: "color 0.2s ease",
+          flexShrink: 0,
+        }}
+      >
+        <span>Open</span>
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <path
+            d="M5 11L11 5M7 5h4v4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    </a>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Page                                                               */
-/* ------------------------------------------------------------------ */
-
 export default function HomePage() {
   const [docs, setDocs] = useState<ApiDoc[]>([]);
-  const { openDoc, loadingId } = useOpenDoc();
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -310,6 +306,27 @@ export default function HomePage() {
   const row1 = HERO_CARDS.filter((c) => c.row === 1);
   const row2 = HERO_CARDS.filter((c) => c.row === 2);
 
+  const handleOpen = useCallback(
+    async (event: React.MouseEvent<HTMLAnchorElement>, docId?: string) => {
+      event.preventDefault();
+      if (!docId) return;
+      try {
+        const res = await fetch("/api/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ documentId: docId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      } catch {
+        alert("Could not open document. Please try again.");
+      }
+    },
+    []
+  );
+
   return (
     <div>
       {/* Hero */}
@@ -327,8 +344,7 @@ export default function HomePage() {
             width: 400,
             height: 400,
             borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(123,97,255,0.06), transparent 70%)",
+            background: "radial-gradient(circle, rgba(123,97,255,0.06), transparent 70%)",
             pointerEvents: "none",
           }}
         />
@@ -366,18 +382,16 @@ export default function HomePage() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 20,
-          marginBottom: 20,
+          gap: 16,
+          marginBottom: 16,
         }}
       >
-        {row1.map((card, i) => (
+        {row1.map((card) => (
           <PaperCard
             key={card.id}
             card={card}
             docId={matchCardToDoc(card, docs)?.id}
-            index={i}
-            loadingId={loadingId}
-            onOpen={openDoc}
+            onOpen={handleOpen}
           />
         ))}
       </div>
@@ -387,18 +401,16 @@ export default function HomePage() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 20,
+          gap: 16,
           marginBottom: 48,
         }}
       >
-        {row2.map((card, i) => (
+        {row2.map((card) => (
           <AssetCard
             key={card.id}
             card={card}
             docId={matchCardToDoc(card, docs)?.id}
-            index={row1.length + i}
-            loadingId={loadingId}
-            onOpen={openDoc}
+            onOpen={handleOpen}
           />
         ))}
       </div>

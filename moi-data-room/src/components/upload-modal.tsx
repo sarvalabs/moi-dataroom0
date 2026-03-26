@@ -68,21 +68,51 @@ export function UploadModal({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (loading) return;
     const f = e.dataTransfer.files[0];
     if (f) setFile(f);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (loading) return;
     const f = e.target.files?.[0];
     if (f) setFile(f);
   };
 
   const handleSubmit = async () => {
     setError(null);
+    const finalCategory = isHome && slot ? slot.category : category;
+    const finalTitle = isHome && slot ? slot.title : title.trim();
+    const finalDesc = isHome && slot ? slot.description : (description.trim() || null);
+
+    if (!file) {
+      setError("Please choose a file to upload.");
+      return;
+    }
+    if (!finalCategory || finalCategory === "home") {
+      setError("Please select a valid category.");
+      return;
+    }
+    if (!finalTitle) {
+      setError("Title is required.");
+      return;
+    }
+
+    // Freeze values at submit time so changes during async upload cannot
+    // send the document to the wrong category/title.
+    const submission = {
+      category: finalCategory,
+      title: finalTitle,
+      description: finalDesc,
+      fileType: fileTypeFromMime(file.type),
+      allowDownload,
+    };
+
     setLoading(true);
     try {
       const formData = new FormData();
-      if (file) formData.set("file", file);
+      formData.set("file", file);
+      formData.set("category", submission.category);
       const uploadRes = await fetch("/api/upload", {
         method: "POST",
         body: formData,
@@ -94,22 +124,17 @@ export function UploadModal({
       }
       const { path } = await uploadRes.json();
 
-      // For home slots, use the slot's real category; otherwise use the selected category
-      const finalCategory = isHome && slot ? slot.category : category;
-      const finalTitle = isHome && slot ? slot.title : title.trim();
-      const finalDesc = isHome && slot ? slot.description : (description.trim() || null);
-
       const docRes = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          title: finalTitle,
-          category: finalCategory,
-          description: finalDesc,
+          title: submission.title,
+          category: submission.category,
+          description: submission.description,
           file_url: path,
-          file_type: file ? fileTypeFromMime(file.type) : "PDF",
-          allow_download: allowDownload,
+          file_type: submission.fileType,
+          allow_download: submission.allowDownload,
         }),
       });
       if (!docRes.ok) {
@@ -148,6 +173,7 @@ export function UploadModal({
           <select
             value={category}
             onChange={(e) => handleCategoryChange(e.target.value)}
+            disabled={loading}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           >
             <option value=""></option>
@@ -171,6 +197,7 @@ export function UploadModal({
                   key={s.id}
                   type="button"
                   onClick={() => handleSlotChange(s.id)}
+                  disabled={loading}
                   className="text-left transition-all"
                   style={{
                     padding: "10px 14px",
@@ -206,6 +233,7 @@ export function UploadModal({
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={loading}
                 className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
               />
             </div>
@@ -216,6 +244,7 @@ export function UploadModal({
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={loading}
                 className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
               />
             </div>
@@ -230,6 +259,7 @@ export function UploadModal({
               role="switch"
               aria-checked={allowDownload}
               onClick={() => setAllowDownload(!allowDownload)}
+              disabled={loading}
               className="relative h-5 w-9 rounded-full transition-colors"
               style={{
                 background: allowDownload ? "var(--accent)" : "var(--border)",
@@ -253,7 +283,7 @@ export function UploadModal({
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !loading && fileInputRef.current?.click()}
             className="mb-6 cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-accent"
           >
             <input
@@ -261,6 +291,7 @@ export function UploadModal({
               type="file"
               accept=".pdf,.pptx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileChange}
+              disabled={loading}
               className="hidden"
             />
             <div className="mb-2 text-2xl">{file ? "✓" : "📎"}</div>
