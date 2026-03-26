@@ -73,6 +73,8 @@ export const HERO_CARDS: readonly HeroCard[] = [
     tag: "PAPER · CONTEXTUAL COMPUTE",
     tagline: "The General Theory of Computation (Value computation)",
     matchCategory: "contextual_compute",
+    /** Prefer this doc over other contextual_compute rows (otherwise the newest in category wins). */
+    matchTitleHint: "Contextual",
     row: 1,
     buttonLabel: "Read Paper",
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BentoCard } from "@/components/bento-card";
 import { Button } from "@/components/button";
 import { Pill } from "@/components/pill";
@@ -129,7 +129,9 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h2>
           <p className="mt-1 text-[13px] text-text-muted">
-            Manage data room documents
+            Manage uploads. To use a Zenodo record as the open target from lists, click{" "}
+            <strong className="font-semibold text-text-dim">Edit</strong> and paste the full record URL
+            (e.g. <code className="text-[12px] text-text-muted">https://zenodo.org/records/…</code>).
           </p>
         </div>
         <Button size="md" onClick={() => setShowModal(true)}>
@@ -230,16 +232,16 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 1fr 60px 90px 100px 80px 60px 200px",
+                gridTemplateColumns: "1.35fr 52px 0.95fr 56px 88px 96px 76px 56px 196px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 860,
+                minWidth: 980,
               }}
             >
-              {["Document", "Category", "Home", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
+              {["Document", "Zenodo", "Category", "Home", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
@@ -297,12 +299,8 @@ function EditModal({
   const [category, setCategory] = useState(doc.category);
   const [showOnOverview, setShowOnOverview] = useState(doc.show_on_overview ?? false);
   const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
-  const [attachIndexPdf, setAttachIndexPdf] = useState<File | null>(null);
-  const attachPdfRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const isLinkOnly = Boolean(doc.external_url) && !doc.file_url;
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -313,74 +311,27 @@ function EditModal({
       setError("Please select a category.");
       return;
     }
-    if (isLinkOnly) {
+    if (externalUrl.trim()) {
       const z = normalizeExternalUrl(externalUrl);
       if (!z) {
-        setError("External URL must be a valid https:// link.");
-        return;
-      }
-    }
-    if (!isLinkOnly && externalUrl.trim()) {
-      const z = normalizeExternalUrl(externalUrl);
-      if (!z) {
-        setError("Public URL must be a valid https:// link or leave it empty.");
+        setError("Zenodo URL must be a valid https:// link or leave the field empty.");
         return;
       }
     }
     setSaving(true);
     setError(null);
     try {
-      if (isLinkOnly && attachIndexPdf) {
-        if (
-          attachIndexPdf.type !== "application/pdf" &&
-          !attachIndexPdf.name.toLowerCase().endsWith(".pdf")
-        ) {
-          throw new Error("Attachment for indexing must be a PDF.");
-        }
-        const fd = new FormData();
-        fd.set("file", attachIndexPdf);
-        fd.set("category", category);
-        const up = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-        if (!up.ok) {
-          const data = await up.json().catch(() => ({}));
-          throw new Error(data.error ?? "Upload failed");
-        }
-        const { path } = await up.json();
-        const patchRes = await fetch(`/api/documents/${doc.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            file_url: path,
-            file_type: "PDF",
-          }),
-        });
-        if (!patchRes.ok) {
-          const data = await patchRes.json().catch(() => ({}));
-          throw new Error(data.error ?? "Failed to attach file");
-        }
-        await fetch("/api/documents/reembed", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ documentId: doc.id }),
-        });
-        setAttachIndexPdf(null);
-      }
+      const normalized = externalUrl.trim()
+        ? normalizeExternalUrl(externalUrl)
+        : null;
 
       const payload: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || null,
         category,
         show_on_overview: showOnOverview,
+        external_url: normalized,
       };
-      if (isLinkOnly) {
-        payload.external_url = normalizeExternalUrl(externalUrl)!;
-      } else {
-        payload.external_url = externalUrl.trim()
-          ? normalizeExternalUrl(externalUrl) ?? null
-          : null;
-      }
 
       const res = await fetch(`/api/documents/${doc.id}`, {
         method: "PATCH",
@@ -414,7 +365,8 @@ function EditModal({
       >
         <h3 className="text-lg font-bold text-text">Edit Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Update title, description, and category.
+          Update metadata. Add a Zenodo record URL so “Open” from the library goes to that page (PDF
+          stays for AI indexing and the file viewer).
         </p>
 
         <div className="mb-4">
@@ -481,49 +433,20 @@ function EditModal({
 
         <div className="mb-4">
           <label className="mb-1.5 block text-xs font-semibold text-text-dim">
-            {isLinkOnly ? "External URL (required)" : "Public page / Zenodo URL (optional)"}
+            Zenodo / public page URL (optional)
           </label>
           <input
             type="url"
             value={externalUrl}
             onChange={(e) => setExternalUrl(e.target.value)}
             disabled={saving}
-            placeholder={isLinkOnly ? "https://zenodo.org/records/…" : "https://…"}
+            placeholder="https://zenodo.org/records/1234567"
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           />
-          {!isLinkOnly && (
-            <p className="mt-1.5 text-[11px] text-text-muted">
-              If set, document lists open this link; the in-app viewer uses the uploaded file. To replace
-              the file, delete this document and upload again.
-            </p>
-          )}
+          <p className="mt-1.5 text-[11px] text-text-muted">
+            Paste the full record link. Leave empty so Open uses the uploaded file (signed URL) instead.
+          </p>
         </div>
-
-        {isLinkOnly && (
-          <div className="mb-6">
-            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
-              Attach PDF for AI indexing (optional)
-            </label>
-            <input
-              ref={attachPdfRef}
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              disabled={saving}
-              onChange={(e) => setAttachIndexPdf(e.target.files?.[0] ?? null)}
-            />
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => attachPdfRef.current?.click()}
-              className="w-full rounded-lg border border-dashed border-border bg-surface-2 px-3 py-3 text-left text-[13px] text-text-dim transition-colors hover:border-accent"
-            >
-              {attachIndexPdf
-                ? attachIndexPdf.name
-                : "Choose PDF — stored privately, embedded for chat"}
-            </button>
-          </div>
-        )}
 
         {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
 
@@ -562,31 +485,27 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.5fr 1fr 60px 90px 100px 80px 60px 200px",
+        gridTemplateColumns: "1.35fr 52px 0.95fr 56px 88px 96px 76px 56px 196px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 860,
+        minWidth: 980,
       }}
     >
-      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-        <span>{doc.title}</span>
-        {doc.external_url ? (
-          <span
-            style={{
-              marginLeft: 8,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: "var(--accent)",
-            }}
-          >
-            {doc.file_url ? "ZENODO" : "LINK"}
-          </span>
-        ) : null}
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{doc.title}</div>
+      <div
+        title={doc.external_url ?? "No public URL — Edit to add Zenodo link"}
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: doc.external_url ? "var(--accent)" : "var(--text-muted)",
+          textAlign: "center",
+        }}
+      >
+        {doc.external_url ? "✓" : "—"}
       </div>
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {CATEGORY_LABELS[doc.category] ?? doc.category}
@@ -600,11 +519,7 @@ function DocRow({
         </Pill>
       </div>
       <div title={doc.embedding_error ?? undefined}>
-        {!doc.file_url && doc.external_url ? (
-          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
-        ) : (
-          <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
-        )}
+        <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
       </div>
       <div>
         <button
@@ -641,13 +556,7 @@ function DocRow({
         {doc.view_count ?? 0}
       </div>
       <div style={{ display: "flex", gap: 6 }}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onReindex}
-          disabled={!doc.file_url}
-          title={!doc.file_url ? "Link-only documents are not indexed" : undefined}
-        >
+        <Button variant="ghost" size="sm" onClick={onReindex}>
           Re-index
         </Button>
         <Button variant="ghost" size="sm" onClick={onEdit}>

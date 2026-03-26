@@ -12,7 +12,7 @@ interface ChatMessage {
 const WELCOME_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Welcome to the **MOI Data Room** assistant.\n\nAsk me anything about MOI's technology, tokenomics, roadmap, or any document in the data room.",
+    "Welcome to **The Context assistant**.\n\nAsk me anything about MOI's technology, tokenomics, roadmap, or any document in the data room.",
 };
 
 /* ------------------------------------------------------------------ */
@@ -249,32 +249,46 @@ const mdComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"]
 };
 
 /* ------------------------------------------------------------------ */
+/*  MOI mark for header + assistant bubbles                             */
+/* ------------------------------------------------------------------ */
+
+function AssistantAvatar({ size, radius }: { size: number; radius: number }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        background: "rgba(18,18,22,0.95)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        marginTop: size <= 28 ? 2 : 0,
+        boxShadow: "0 2px 8px rgba(123,97,255,0.2)",
+        border: "1px solid rgba(123,97,255,0.12)",
+        overflow: "hidden",
+      }}
+    >
+      <img
+        src="/logo-moi-dark.svg"
+        alt=""
+        width={Math.round(size * 0.72)}
+        height={Math.round(size * 0.58)}
+        style={{ objectFit: "contain", display: "block" }}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Assistant bubble with markdown                                     */
 /* ------------------------------------------------------------------ */
 
 function AssistantBubble({ content }: { content: string }) {
   return (
     <div style={{ display: "flex", gap: 10, alignSelf: "flex-start", maxWidth: "92%" }}>
-      {/* Avatar */}
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          background: "linear-gradient(135deg, #7b61ff 0%, #a78bfa 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          fontSize: 12,
-          color: "#fff",
-          fontWeight: 700,
-          marginTop: 2,
-          boxShadow: "0 2px 8px rgba(123,97,255,0.3)",
-        }}
-      >
-        M
-      </div>
+      <AssistantAvatar size={28} radius={8} />
       {/* Bubble */}
       <div
         style={{
@@ -543,28 +557,12 @@ export function ChatBot() {
               background: "linear-gradient(180deg, rgba(123,97,255,0.06) 0%, transparent 100%)",
             }}
           >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 10,
-                background: "linear-gradient(135deg, #7b61ff 0%, #a78bfa 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-                color: "#fff",
-                fontWeight: 700,
-                boxShadow: "0 2px 8px rgba(123,97,255,0.3)",
-              }}
-            >
-              M
-            </div>
+            <AssistantAvatar size={32} radius={10} />
             <div style={{ flex: 1 }}>
               <div
                 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}
               >
-                MOI Assistant
+                The Context assistant
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, marginTop: 1 }}>
                 <span style={{
@@ -577,20 +575,6 @@ export function ChatBot() {
                 }} />
                 Online
               </div>
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#a78bfa",
-                background: "rgba(123,97,255,0.1)",
-                padding: "4px 10px",
-                borderRadius: 8,
-                letterSpacing: "0.03em",
-                fontWeight: 500,
-                border: "1px solid rgba(123,97,255,0.15)",
-              }}
-            >
-              Powered by Claude
             </div>
           </div>
 

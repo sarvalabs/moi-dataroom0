@@ -10,8 +10,6 @@ interface DocMeta {
   fileType: string;
   title?: string;
   isExternal?: boolean;
-  /** Zenodo / public page when the doc also has a stored PDF */
-  canonicalUrl?: string;
 }
 
 export default function DocViewerPage() {
@@ -43,7 +41,7 @@ export default function DocViewerPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ documentId: id, preferFile: true }),
+          body: JSON.stringify({ documentId: id }),
         });
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to load document");
@@ -54,8 +52,6 @@ export default function DocViewerPage() {
             fileType: data.fileType ?? "PDF",
             title,
             isExternal: Boolean(data.isExternal),
-            canonicalUrl:
-              typeof data.canonicalUrl === "string" ? data.canonicalUrl : undefined,
           });
         }
       } catch (e: any) {
@@ -186,18 +182,6 @@ export default function DocViewerPage() {
           >
             Next →
           </Button>
-          {meta?.canonicalUrl && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                meta.canonicalUrl &&
-                window.open(meta.canonicalUrl, "_blank", "noopener,noreferrer")
-              }
-            >
-              Public page ↗
-            </Button>
-          )}
           {meta?.allowDownload && (
             <Button
               variant="outline"

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { StatCardsGrid } from "@/components/stat-card";
 import { LandingFooter } from "@/components/landing-footer";
@@ -12,7 +13,8 @@ interface ApiDoc {
   description?: string | null;
   category: string;
   show_on_overview?: boolean;
-  file_type?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
@@ -27,6 +29,17 @@ function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
     if (byTitle) return byTitle;
   }
   return pool[0];
+}
+
+function formatLastUpdatedLine(docs: ApiDoc[]): string {
+  const times = docs
+    .flatMap((d) => [d.updated_at, d.created_at].filter(Boolean) as string[])
+    .map((t) => new Date(t).getTime())
+    .filter((t) => !Number.isNaN(t));
+  if (times.length === 0) return "Last updated Mar 2026";
+  const newest = new Date(Math.max(...times));
+  const label = newest.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return `Last updated ${label}`;
 }
 
 function getDocPreview(card: HeroCard): string {
@@ -45,18 +58,15 @@ function getDocPreview(card: HeroCard): string {
 function PaperCard({
   card,
   docId,
-  fileType,
   onOpen,
 }: {
   card: HeroCard;
   docId?: string;
-  fileType?: string;
   onOpen: (e: React.MouseEvent<HTMLAnchorElement>, id?: string) => void;
 }) {
   const [hov, setHov] = useState(false);
   const docName = getDocPreview(card);
   const docNameMultiline = card.id === "paradigm";
-  const badgeLabel = fileType === "Link" ? "LINK" : "PDF";
 
   return (
     <a
@@ -155,7 +165,7 @@ function PaperCard({
             borderRadius: 6,
           }}
         >
-          {badgeLabel}
+          PDF
         </span>
 
         {/* Doc text */}
@@ -307,6 +317,12 @@ export default function HomePage() {
   const row1 = HERO_CARDS.filter((c) => c.row === 1);
   const row2 = HERO_CARDS.filter((c) => c.row === 2);
 
+  const researchCount = useMemo(
+    () => docs.filter((d) => d.category === "research").length,
+    [docs]
+  );
+  const lastUpdatedLine = useMemo(() => formatLastUpdatedLine(docs), [docs]);
+
   const handleOpen = useCallback(
     async (event: React.MouseEvent<HTMLAnchorElement>, docId?: string) => {
       event.preventDefault();
@@ -336,7 +352,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        style={{ position: "relative", padding: "64px 0 48px", marginBottom: 48 }}
+        style={{ position: "relative", padding: "40px 0 0", marginBottom: 48 }}
       >
         <div
           style={{
@@ -356,34 +372,64 @@ export default function HomePage() {
             padding: "4px 14px",
             borderRadius: 20,
             border: "1px solid var(--border)",
-            marginBottom: 20,
+            marginBottom: 16,
           }}
         >
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
             Confidential — Investor Access Only
           </span>
         </div>
-        <h1 className="mb-4 font-display text-5xl font-extrabold tracking-[-0.04em] leading-[1.1] text-text">
+        <h1 className="mb-3 font-display text-5xl font-extrabold tracking-[-0.04em] leading-[1.1] text-text">
           MOI Data Room
         </h1>
-        <p className="max-w-[560px] text-[17px] leading-[1.7] text-text-dim">
-          The contextual compute network powering the participant layer of the internet — the
-          context infrastructure of the AI economy.
+        <p
+          className="mb-0 max-w-[500px] leading-[1.6] text-[#8B8B96]"
+          style={{ fontSize: 16 }}
+        >
+          Everything you need for due diligence — all in one place.
         </p>
-        <div className="mt-8 flex gap-3">
+        <div className="mt-7 flex flex-wrap items-center" style={{ gap: 12 }}>
+          <Link
+            href="#documents"
+            className="inline-flex items-center justify-center rounded-[10px] bg-[#7B61FF] font-sans text-white transition-opacity hover:opacity-[0.92]"
+            style={{ padding: "14px 28px", fontSize: 15, fontWeight: 600 }}
+          >
+            Explore Documents
+          </Link>
           <a
             href="https://calendly.com/aikrish/meet"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-7 py-3 text-sm font-sans font-semibold tracking-[0.01em] text-text-dim transition-all duration-200 hover:border-accent hover:bg-accent-dim hover:text-accent"
+            className="inline-flex items-center justify-center rounded-[10px] border border-[#222228] bg-transparent font-sans font-semibold text-[#8B8B96] transition-colors hover:text-text-dim"
+            style={{ padding: "14px 28px", fontSize: 15, fontWeight: 600 }}
           >
             Schedule a Call ↗
           </a>
+        </div>
+        <div
+          className="flex flex-wrap items-center"
+          style={{
+            marginTop: 40,
+            gap: 16,
+            fontSize: 13,
+            color: "#5A5A66",
+          }}
+        >
+          <span>
+            {researchCount} Research Paper{researchCount === 1 ? "" : "s"}
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            {docs.length} Document{docs.length === 1 ? "" : "s"}
+          </span>
+          <span aria-hidden>·</span>
+          <span>{lastUpdatedLine}</span>
         </div>
       </motion.div>
 
       {/* One grid for paper + asset rows so each column shares the same width (e.g. Foundation ↔ IM deck). */}
       <div
+        id="documents"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
@@ -393,18 +439,14 @@ export default function HomePage() {
           marginBottom: 48,
         }}
       >
-        {row1.map((card) => {
-          const matched = matchCardToDoc(card, docs);
-          return (
-            <PaperCard
-              key={card.id}
-              card={card}
-              docId={matched?.id}
-              fileType={matched?.file_type}
-              onOpen={handleOpen}
-            />
-          );
-        })}
+        {row1.map((card) => (
+          <PaperCard
+            key={card.id}
+            card={card}
+            docId={matchCardToDoc(card, docs)?.id}
+            onOpen={handleOpen}
+          />
+        ))}
         {row2.map((card) => (
           <AssetCard
             key={card.id}

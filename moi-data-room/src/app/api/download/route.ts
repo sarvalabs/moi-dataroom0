@@ -3,8 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { documentId, preferFile } = body;
-  const useFile = preferFile === true;
+  const { documentId } = body;
 
   if (!documentId) {
     return NextResponse.json(
@@ -28,44 +27,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const filePath = doc.file_url?.trim();
   const external = doc.external_url?.trim();
-
-  async function logView() {
+  if (external) {
     await admin.from("analytics").insert({
       document_id: documentId,
       user_id: null,
       action: "view",
     });
-  }
-
-  /** In-app PDF viewer: signed storage file when present. */
-  if (useFile && filePath) {
-    const { data: signed, error: signError } = await admin.storage
-      .from("investor-docs")
-      .createSignedUrl(filePath, 60);
-
-    if (signError || !signed?.signedUrl) {
-      return NextResponse.json(
-        { error: "Failed to create download URL" },
-        { status: 500 }
-      );
-    }
-
-    await logView();
-
-    return NextResponse.json({
-      url: signed.signedUrl,
-      allowDownload: doc.allow_download ?? true,
-      fileType: doc.file_type ?? "PDF",
-      isExternal: false,
-      canonicalUrl: external || undefined,
-    });
-  }
-
-  /** Default open from lists / home: Zenodo or public page when set, else file. */
-  if (external) {
-    await logView();
 
     return NextResponse.json({
       url: external,
@@ -75,7 +43,7 @@ export async function POST(request: Request) {
     });
   }
 
-  if (!filePath) {
+  if (!doc.file_url) {
     return NextResponse.json(
       { error: "Document has no file or link" },
       { status: 404 }
@@ -84,7 +52,7 @@ export async function POST(request: Request) {
 
   const { data: signed, error: signError } = await admin.storage
     .from("investor-docs")
-    .createSignedUrl(filePath, 60);
+    .createSignedUrl(doc.file_url, 60);
 
   if (signError || !signed?.signedUrl) {
     return NextResponse.json(
@@ -93,7 +61,11 @@ export async function POST(request: Request) {
     );
   }
 
-  await logView();
+  await admin.from("analytics").insert({
+    document_id: documentId,
+    user_id: null,
+    action: "view",
+  });
 
   return NextResponse.json({
     url: signed.signedUrl,
