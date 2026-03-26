@@ -9,7 +9,6 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 const ALLOWED_CATEGORIES = new Set([
-  "overview",
   "contextual_compute",
   "engineering",
   "business",

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { StatCardsGrid } from "@/components/stat-card";
-import { Button } from "@/components/button";
+import { LandingFooter } from "@/components/landing-footer";
 import { HERO_CARDS, type HeroCard } from "@/lib/constants";
 
 interface ApiDoc {
@@ -11,29 +11,33 @@ interface ApiDoc {
   title: string;
   description?: string | null;
   category: string;
+  show_on_overview?: boolean;
 }
 
 function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
-  const byCategory = docs.filter((d) => d.category === card.matchCategory);
+  const pool = card.matchCategory
+    ? docs.filter((d) => d.category === card.matchCategory)
+    : docs.filter((d) => d.show_on_overview);
+
   if (card.matchTitleHint) {
-    const byTitle = byCategory.find((d) =>
+    const byTitle = pool.find((d) =>
       d.title.toLowerCase().includes(card.matchTitleHint!.toLowerCase())
     );
     if (byTitle) return byTitle;
   }
-  return byCategory[0];
+  return pool[0];
 }
 
-function getDocPreview(card: HeroCard) {
+function getDocPreview(card: HeroCard): string {
   switch (card.id) {
     case "foundation":
-      return { name: "MOI Mathematics Paper", meta: "PDF · 42 pages" };
+      return "Math paper";
     case "paradigm":
-      return { name: "Contextual Compute Paper", meta: "PDF · 38 pages" };
+      return "Contextual Compute Paper";
     case "network":
-      return { name: "MOI Network Whitepaper", meta: "PDF · 56 pages" };
+      return "Whitepaper";
     default:
-      return { name: card.title, meta: "PDF" };
+      return card.title;
   }
 }
 
@@ -47,7 +51,8 @@ function PaperCard({
   onOpen: (e: React.MouseEvent<HTMLAnchorElement>, id?: string) => void;
 }) {
   const [hov, setHov] = useState(false);
-  const preview = getDocPreview(card);
+  const docName = getDocPreview(card);
+  const docNameMultiline = card.id === "paradigm";
 
   return (
     <a
@@ -56,6 +61,8 @@ function PaperCard({
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
+        boxSizing: "border-box",
+        width: "100%",
         textDecoration: "none",
         display: "flex",
         flexDirection: "column",
@@ -105,9 +112,10 @@ function PaperCard({
       {/* Description */}
       <p
         style={{
-          fontSize: 14,
+          fontSize: 15,
           fontStyle: "italic",
-          color: "#8B8B96",
+          fontWeight: 500,
+          color: "#E8E8ED",
           lineHeight: 1.55,
           margin: "0 0 22px 0",
           flexGrow: 1,
@@ -125,7 +133,7 @@ function PaperCard({
           borderRadius: 10,
           padding: "14px 16px",
           display: "flex",
-          alignItems: "center",
+          alignItems: docNameMultiline ? "flex-start" : "center",
           gap: 12,
           transition: "border-color 0.2s ease",
         }}
@@ -172,15 +180,19 @@ function PaperCard({
               fontSize: 13,
               fontWeight: 600,
               color: "#E8E8ED",
-              whiteSpace: "nowrap" as const,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              ...(docNameMultiline
+                ? {
+                    whiteSpace: "normal" as const,
+                    lineHeight: 1.4,
+                  }
+                : {
+                    whiteSpace: "nowrap" as const,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }),
             }}
           >
-            {preview.name}
-          </div>
-          <div style={{ fontSize: 11, color: "#5A5A66", marginTop: 2 }}>
-            {preview.meta}
+            {docName}
           </div>
         </div>
 
@@ -229,6 +241,10 @@ function AssetCard({
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
+        boxSizing: "border-box",
+        width: "100%",
+        height: "fit-content",
+        alignSelf: "start",
         textDecoration: "none",
         background: "#141416",
         border: "1px solid",
@@ -241,7 +257,7 @@ function AssetCard({
         transition: "border-color 0.2s ease",
       }}
     >
-      <div>
+      <div style={{ minWidth: 0 }}>
         <h3
           style={{
             fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
@@ -328,7 +344,8 @@ export default function HomePage() {
   );
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -370,20 +387,26 @@ export default function HomePage() {
           in one place.
         </p>
         <div className="mt-8 flex gap-3">
-          <Button size="lg">Explore Documents</Button>
-          <Button variant="ghost" size="lg">
+          <a
+            href="https://calendly.com/aikrish/meet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-7 py-3 text-sm font-sans font-semibold tracking-[0.01em] text-text-dim transition-all duration-200 hover:border-accent hover:bg-accent-dim hover:text-accent"
+          >
             Schedule a Call ↗
-          </Button>
+          </a>
         </div>
       </motion.div>
 
-      {/* Row 1 — Research Paper Cards */}
+      {/* One grid for paper + asset rows so each column shares the same width (e.g. Foundation ↔ IM deck). */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          alignItems: "start",
+          justifyItems: "stretch",
           gap: 16,
-          marginBottom: 16,
+          marginBottom: 48,
         }}
       >
         {row1.map((card) => (
@@ -394,17 +417,6 @@ export default function HomePage() {
             onOpen={handleOpen}
           />
         ))}
-      </div>
-
-      {/* Row 2 — Asset Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 16,
-          marginBottom: 48,
-        }}
-      >
         {row2.map((card) => (
           <AssetCard
             key={card.id}
@@ -426,6 +438,8 @@ export default function HomePage() {
         </h3>
         <StatCardsGrid />
       </motion.div>
+      </div>
+      <LandingFooter />
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { UploadModal } from "@/components/upload-modal";
 import type { Document } from "@/lib/types";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  overview: "Overview",
   contextual_compute: "Contextual Compute",
   engineering: "Engineering",
   business: "Business & GTM",
@@ -230,16 +229,16 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
+                gridTemplateColumns: "1.5fr 1fr 60px 90px 100px 80px 60px 200px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 780,
+                minWidth: 860,
               }}
             >
-              {["Document", "Category", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
+              {["Document", "Category", "Home", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
@@ -295,6 +294,7 @@ function EditModal({
   const [title, setTitle] = useState(doc.title);
   const [description, setDescription] = useState(doc.description ?? "");
   const [category, setCategory] = useState(doc.category);
+  const [showOnOverview, setShowOnOverview] = useState(doc.show_on_overview ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -318,6 +318,7 @@ function EditModal({
           title: title.trim(),
           description: description.trim() || null,
           category,
+          show_on_overview: showOnOverview,
         }),
       });
       if (!res.ok) {
@@ -375,7 +376,7 @@ function EditModal({
             ))}
           </select>
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="mb-1.5 block text-xs font-semibold text-text-dim">
             Description
           </label>
@@ -385,6 +386,30 @@ function EditModal({
             rows={3}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none resize-none"
           />
+        </div>
+
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showOnOverview}
+            onClick={() => setShowOnOverview(!showOnOverview)}
+            disabled={saving}
+            className="relative h-5 w-9 rounded-full transition-colors"
+            style={{
+              background: showOnOverview ? "var(--accent)" : "var(--border)",
+            }}
+          >
+            <span
+              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+              style={{
+                transform: showOnOverview ? "translateX(16px)" : "translateX(0)",
+              }}
+            />
+          </button>
+          <label className="text-xs font-medium text-text-dim">
+            Show on Home page (Overview)
+          </label>
         </div>
 
         {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
@@ -424,14 +449,14 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
+        gridTemplateColumns: "1.5fr 1fr 60px 90px 100px 80px 60px 200px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 780,
+        minWidth: 860,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
@@ -439,6 +464,9 @@ function DocRow({
       </div>
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {CATEGORY_LABELS[doc.category] ?? doc.category}
+      </div>
+      <div style={{ fontSize: 12, color: doc.show_on_overview ? "var(--accent)" : "var(--text-muted)" }}>
+        {doc.show_on_overview ? "Yes" : "—"}
       </div>
       <div>
         <Pill variant={doc.status === "published" ? "green" : "amber"}>

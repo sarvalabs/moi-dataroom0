@@ -1,5 +1,4 @@
 export type DocumentCategory =
-  | "overview"
   | "contextual_compute"
   | "engineering"
   | "business"
@@ -51,7 +50,7 @@ export interface HeroCard {
   title: string;
   tag?: string;
   tagline: string;
-  matchCategory: DocumentCategory;
+  matchCategory?: DocumentCategory;
   matchTitleHint?: string;
   row: 1 | 2;
   buttonLabel: string;
@@ -61,18 +60,18 @@ export const HERO_CARDS: readonly HeroCard[] = [
   {
     id: "foundation",
     title: "Foundation",
-    tag: "PAPER · RESEARCH",
-    tagline: "Formal mathematical framework underpinning the MOI protocol",
+    tag: "PAPER · MATHEMATICS",
+    tagline: "Value ≠ Information",
     matchCategory: "engineering",
-    matchTitleHint: "Yellow",
+    matchTitleHint: "Math",
     row: 1,
     buttonLabel: "Read Paper",
   },
   {
     id: "paradigm",
     title: "Paradigm",
-    tag: "PAPER · RESEARCH",
-    tagline: "A participant-indexed model redefining computation",
+    tag: "PAPER · CONTEXTUAL COMPUTE",
+    tagline: "The General Theory of Computation (Value computation)",
     matchCategory: "contextual_compute",
     row: 1,
     buttonLabel: "Read Paper",
@@ -81,14 +80,14 @@ export const HERO_CARDS: readonly HeroCard[] = [
     id: "network",
     title: "Network",
     tag: "PAPER · WHITEPAPER",
-    tagline: "The blueprint for decentralized context-aware infrastructure",
-    matchCategory: "overview",
+    tagline: "The Participant Layer: Now YOU have existence within computation",
+    matchTitleHint: "Network",
     row: 1,
     buttonLabel: "Read Paper",
   },
   {
     id: "pitch-deck",
-    title: "Pitch Deck",
+    title: "IM deck",
     tagline: "Investor presentation",
     matchCategory: "business",
     matchTitleHint: "Slide",
@@ -97,9 +96,8 @@ export const HERO_CARDS: readonly HeroCard[] = [
   },
   {
     id: "two-pager",
-    title: "2 Pager",
-    tagline: "Executive summary",
-    matchCategory: "overview",
+    title: "CC Intro",
+    tagline: "2-pager",
     matchTitleHint: "2 Pager",
     row: 2,
     buttonLabel: "Open",

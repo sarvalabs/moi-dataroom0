@@ -1,5 +1,4 @@
 export type DocumentCategory =
-  | "overview"
   | "contextual_compute"
   | "engineering"
   | "business"
@@ -24,6 +23,7 @@ export interface Document {
   embedding_status: EmbeddingStatus;
   embedding_error: string | null;
   allow_download: boolean;
+  show_on_overview: boolean;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;

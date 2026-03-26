@@ -4,21 +4,13 @@ import { useState, useRef } from "react";
 import { Button } from "./button";
 import type { DocumentCategory } from "@/lib/constants";
 
-const CATEGORIES: { value: DocumentCategory | "home"; label: string }[] = [
-  { value: "home", label: "Overview (Home)" },
+const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "contextual_compute", label: "Contextual Compute" },
   { value: "engineering", label: "Engineering" },
   { value: "business", label: "Business & GTM" },
   { value: "tokenomics", label: "Tokenomics" },
   { value: "research", label: "Research" },
   { value: "usecases", label: "Use Cases" },
-];
-
-const HOME_SLOTS = [
-  { id: "litepaper", title: "Litepaper", description: "MOI protocol overview", category: "overview" as DocumentCategory },
-  { id: "slide_deck", title: "Slide Deck", description: "Investor presentation", category: "business" as DocumentCategory },
-  { id: "yellow_paper", title: "Yellow Paper", description: "Protocol specification", category: "engineering" as DocumentCategory },
-  { id: "contextual_compute", title: "Contextual Compute", description: "The general theory of computation", category: "contextual_compute" as DocumentCategory },
 ];
 
 function fileTypeFromMime(mime: string): string {
@@ -35,35 +27,20 @@ export function UploadModal({
   onClose: () => void;
   onSuccess?: () => void;
 }) {
-  const [category, setCategory] = useState<DocumentCategory | "home" | "">("");
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [category, setCategory] = useState<DocumentCategory | "">("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [showOnOverview, setShowOnOverview] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isHome = category === "home";
-  const slot = HOME_SLOTS.find((s) => s.id === selectedSlot);
-
   const handleCategoryChange = (val: string) => {
-    setCategory(val as DocumentCategory | "home" | "");
-    setSelectedSlot("");
-    if (val !== "home") {
-      setTitle("");
-      setDescription("");
-    }
-  };
-
-  const handleSlotChange = (slotId: string) => {
-    setSelectedSlot(slotId);
-    const s = HOME_SLOTS.find((h) => h.id === slotId);
-    if (s) {
-      setTitle(s.title);
-      setDescription(s.description);
-    }
+    setCategory(val as DocumentCategory | "");
+    setTitle("");
+    setDescription("");
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -81,31 +58,27 @@ export function UploadModal({
 
   const handleSubmit = async () => {
     setError(null);
-    const finalCategory = isHome && slot ? slot.category : category;
-    const finalTitle = isHome && slot ? slot.title : title.trim();
-    const finalDesc = isHome && slot ? slot.description : (description.trim() || null);
 
     if (!file) {
       setError("Please choose a file to upload.");
       return;
     }
-    if (!finalCategory || finalCategory === "home") {
-      setError("Please select a valid category.");
+    if (!category) {
+      setError("Please select a category.");
       return;
     }
-    if (!finalTitle) {
+    if (!title.trim()) {
       setError("Title is required.");
       return;
     }
 
-    // Freeze values at submit time so changes during async upload cannot
-    // send the document to the wrong category/title.
     const submission = {
-      category: finalCategory,
-      title: finalTitle,
-      description: finalDesc,
+      category,
+      title: title.trim(),
+      description: description.trim() || null,
       fileType: fileTypeFromMime(file.type),
       allowDownload,
+      showOnOverview,
     };
 
     setLoading(true);
@@ -135,6 +108,7 @@ export function UploadModal({
           file_url: path,
           file_type: submission.fileType,
           allow_download: submission.allowDownload,
+          show_on_overview: submission.showOnOverview,
         }),
       });
       if (!docRes.ok) {
@@ -185,46 +159,8 @@ export function UploadModal({
           </select>
         </div>
 
-        {/* Home slot selector */}
-        {isHome && (
-          <div className="mb-4">
-            <label className="mb-2 block text-xs font-semibold text-text-dim">
-              Select Document
-            </label>
-            <div className="flex flex-col gap-2">
-              {HOME_SLOTS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleSlotChange(s.id)}
-                  disabled={loading}
-                  className="text-left transition-all"
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: selectedSlot === s.id
-                      ? "1.5px solid var(--accent)"
-                      : "1px solid var(--border)",
-                    background: selectedSlot === s.id
-                      ? "rgba(123,97,255,0.08)"
-                      : "var(--surface-2)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div className="text-[13px] font-medium" style={{
-                    color: selectedSlot === s.id ? "var(--accent-2)" : "var(--text)",
-                  }}>
-                    {s.title}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-text-muted">{s.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Title & Description — only for non-home categories */}
-        {!isHome && category && (
+        {/* Title & Description */}
+        {category && (
           <>
             <div className="mb-4">
               <label className="mb-1.5 block text-xs font-semibold text-text-dim">
@@ -251,8 +187,35 @@ export function UploadModal({
           </>
         )}
 
+        {/* Show on Home toggle */}
+        {category && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showOnOverview}
+              onClick={() => setShowOnOverview(!showOnOverview)}
+              disabled={loading}
+              className="relative h-5 w-9 rounded-full transition-colors"
+              style={{
+                background: showOnOverview ? "var(--accent)" : "var(--border)",
+              }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                style={{
+                  transform: showOnOverview ? "translateX(16px)" : "translateX(0)",
+                }}
+              />
+            </button>
+            <label className="text-xs font-medium text-text-dim">
+              Show on Home page (Overview)
+            </label>
+          </div>
+        )}
+
         {/* Download permission */}
-        {(isHome ? selectedSlot : category) && (
+        {category && (
           <div className="mb-4 flex items-center gap-3">
             <button
               type="button"
@@ -279,7 +242,7 @@ export function UploadModal({
         )}
 
         {/* File drop */}
-        {(isHome ? selectedSlot : category) && (
+        {category && (
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}

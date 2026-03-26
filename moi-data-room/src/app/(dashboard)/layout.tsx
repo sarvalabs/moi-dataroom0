@@ -45,14 +45,16 @@ export default function DashboardLayout({
         style={{
           marginLeft: 230,
           minHeight: "100vh",
-          padding: "40px 56px 80px",
+          display: "flex",
+          flexDirection: "column",
+          padding: "40px 56px 24px",
           maxWidth: 960,
           transition: "margin-left 0.3s ease",
           position: "relative",
         }}
       >
         {/* Breadcrumb */}
-        <div className="mb-8 flex items-center gap-2 text-xs text-text-muted">
+        <div className="mb-8 flex shrink-0 items-center gap-2 text-xs text-text-muted">
           <span className="cursor-pointer">Data Room</span>
           {activeId !== "home" && breadcrumb.length > 0 && breadcrumb.map((crumb, i) => (
             <span key={crumb.id} className="flex items-center gap-2">
@@ -73,7 +75,9 @@ export default function DashboardLayout({
             </>
           )}
         </div>
-        {children}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {children}
+        </div>
         <div
           style={{
             position: "absolute",
