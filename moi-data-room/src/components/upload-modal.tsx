@@ -8,6 +8,7 @@ import {
   heroHomeAdminLabel,
 } from "@/lib/constants";
 import { normalizeExternalUrl } from "@/lib/external-url";
+import { resolveUploadMime } from "@/lib/upload-allowed";
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "contextual_compute", label: "Contextual Compute" },
@@ -80,6 +81,13 @@ export function UploadModal({
       setError("Please choose a file to upload.");
       return;
     }
+    const resolvedMime = resolveUploadMime(file);
+    if (!resolvedMime) {
+      setError(
+        "Only PDF, PPTX, or DOCX. If the file is correct, use a name ending in .pdf, .pptx, or .docx (drag-and-drop sometimes hides the type)."
+      );
+      return;
+    }
     if (publicUrl.trim()) {
       const n = normalizeExternalUrl(publicUrl);
       if (!n) {
@@ -118,7 +126,7 @@ export function UploadModal({
           description: description.trim() || null,
           file_url: path,
           ...(externalUrl ? { external_url: externalUrl } : {}),
-          file_type: fileTypeFromMime(file.type),
+          file_type: fileTypeFromMime(resolvedMime),
           allow_download: allowDownload,
           ...(homeHeroSlot.trim() ? { home_hero_slot: homeHeroSlot.trim() } : {}),
         }),

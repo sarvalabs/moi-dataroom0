@@ -15,6 +15,16 @@ interface ApiDoc {
   home_hero_slot?: string | null;
 }
 
+function titleMatchesAnyHint(docTitle: string, card: HeroCard): boolean {
+  const hints = [
+    card.matchTitleHint,
+    ...(card.matchTitleHintsExtra ?? []),
+  ].filter((h): h is string => Boolean(h?.trim()));
+  if (hints.length === 0) return false;
+  const lower = docTitle.toLowerCase();
+  return hints.some((h) => lower.includes(h.toLowerCase()));
+}
+
 function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
   const pinned = docs.find((d) => d.home_hero_slot === card.id);
   if (pinned) return pinned;
@@ -24,12 +34,15 @@ function matchCardToDoc(card: HeroCard, docs: ApiDoc[]): ApiDoc | undefined {
     ? unpinned.filter((d) => d.category === card.matchCategory)
     : unpinned.filter((d) => d.show_on_overview);
 
-  if (card.matchTitleHint) {
-    const byTitle = pool.find((d) =>
-      d.title.toLowerCase().includes(card.matchTitleHint!.toLowerCase())
-    );
-    if (byTitle) return byTitle;
+  const hasHints =
+    Boolean(card.matchTitleHint?.trim()) ||
+    (card.matchTitleHintsExtra?.length ?? 0) > 0;
+
+  if (hasHints) {
+    const byTitle = pool.find((d) => titleMatchesAnyHint(d.title, card));
+    return byTitle;
   }
+
   return pool[0];
 }
 

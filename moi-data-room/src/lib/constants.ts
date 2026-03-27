@@ -52,6 +52,8 @@ export interface HeroCard {
   tagline: string;
   matchCategory?: DocumentCategory;
   matchTitleHint?: string;
+  /** Extra case-insensitive title substrings for fuzzy match (after matchTitleHint). */
+  matchTitleHintsExtra?: readonly string[];
   row: 1 | 2;
   buttonLabel: string;
 }
@@ -110,6 +112,7 @@ export const HERO_CARDS: readonly HeroCard[] = [
     tagline: "Go-to-market strategy",
     matchCategory: "business",
     matchTitleHint: "GTM",
+    matchTitleHintsExtra: ["go-to-market", "go to market"],
     row: 2,
     buttonLabel: "Open",
   },
