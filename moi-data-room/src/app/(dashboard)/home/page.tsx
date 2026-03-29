@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import { StatCardsGrid } from "@/components/stat-card";
 import { LandingFooter } from "@/components/landing-footer";
 import { HERO_CARDS, type HeroCard } from "@/lib/constants";
@@ -92,8 +91,8 @@ function PaperCard({
         borderBottomColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
         borderLeftColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
         borderRadius: 16,
-        padding: "26px 24px 24px",
-        minHeight: 305,
+        padding: "22px 20px 20px",
+        minHeight: 240,
         transition: "border-color 0.3s ease, box-shadow 0.3s ease",
         boxShadow: hov ? "0 8px 40px rgba(0,0,0,0.25)" : "none",
       }}
@@ -249,7 +248,7 @@ function AssetCard({
         border: "1px solid",
         borderColor: hov ? "#333" : "#222228",
         borderRadius: 14,
-        padding: "22px 26px",
+        padding: "18px 20px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -346,11 +345,8 @@ export default function HomePage() {
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="min-w-0 flex-1">
       {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        style={{ position: "relative", padding: "64px 0 48px", marginBottom: 48 }}
+      <div
+        className="animate-fade-in-up relative mb-8 px-0 pt-8 pb-6 md:mb-12 md:pt-16 md:pb-12"
       >
         <div
           style={{
@@ -377,14 +373,14 @@ export default function HomePage() {
             Confidential — Investor Access Only
           </span>
         </div>
-        <h1 className="mb-4 font-display text-5xl font-extrabold tracking-[-0.04em] leading-[1.1] text-text">
+        <h1 className="mb-4 font-display text-3xl font-extrabold tracking-[-0.04em] leading-[1.1] text-text md:text-5xl">
           MOI Data Room
         </h1>
-        <p className="max-w-[560px] text-[17px] leading-[1.7] text-text-dim">
+        <p className="max-w-[560px] text-[15px] leading-[1.7] text-text-dim md:text-[17px]">
           The contextual compute network powering the participant layer of the internet — the
           context infrastructure of the AI economy.
         </p>
-        <div className="mt-8 flex gap-3">
+        <div className="mt-6 flex gap-3 md:mt-8">
           <a
             href="https://calendly.com/aikrish/meet"
             target="_blank"
@@ -394,19 +390,9 @@ export default function HomePage() {
             Schedule a Call ↗
           </a>
         </div>
-      </motion.div>
+      </div>
 
-      {/* One grid for paper + asset rows so each column shares the same width (e.g. Foundation ↔ IM deck). */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          alignItems: "start",
-          justifyItems: "stretch",
-          gap: 16,
-          marginBottom: 48,
-        }}
-      >
+      <div className="mb-8 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 md:mb-12">
         {row1.map((card) => (
           <PaperCard
             key={card.id}
@@ -426,16 +412,12 @@ export default function HomePage() {
       </div>
 
       {/* Stats Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: "0.3s", animationFillMode: "backwards" }}>
         <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
           Network & Community
         </h3>
         <StatCardsGrid />
-      </motion.div>
+      </div>
       </div>
       <LandingFooter />
     </div>

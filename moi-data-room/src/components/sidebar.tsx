@@ -1,24 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useSyncExternalStore, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { useMobileMenu } from "@/lib/use-mobile-menu";
+
+const MOBILE_BP = 768;
+const MOBILE_QUERY = `(max-width: ${MOBILE_BP - 1}px)`;
+
+function useIsMobile() {
+  const subscribe = useCallback((cb: () => void) => {
+    const mql = window.matchMedia(MOBILE_QUERY);
+    mql.addEventListener("change", cb);
+    return () => mql.removeEventListener("change", cb);
+  }, []);
+  const getSnapshot = useCallback(() => window.matchMedia(MOBILE_QUERY).matches, []);
+  const getServerSnapshot = useCallback(() => false, []);
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
 function SidebarItem({
   item,
   active,
   collapsed,
+  onNav,
 }: {
   item: NavItem;
   active: boolean;
   collapsed: boolean;
+  onNav?: () => void;
 }) {
   const [hov, setHov] = useState(false);
 
   return (
     <Link
       href={item.href}
+      onClick={onNav}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -80,24 +98,16 @@ function SidebarItem({
   );
 }
 
-function allChildHrefs(item: NavItem): string[] {
-  const hrefs = [item.href];
-  if (item.children) {
-    for (const child of item.children) {
-      hrefs.push(...allChildHrefs(child));
-    }
-  }
-  return hrefs;
-}
-
 function SidebarGroup({
   item,
   pathname,
   collapsed,
+  onNav,
 }: {
   item: NavItem;
   pathname: string;
   collapsed: boolean;
+  onNav?: () => void;
 }) {
   const isChildActive = item.children?.some((c) => pathname === c.href) ?? false;
   const isSelfActive = pathname === item.href;
@@ -147,6 +157,7 @@ function SidebarGroup({
         )}
         <Link
           href={item.href}
+          onClick={onNav}
           style={{
             display: "flex",
             alignItems: "center",
@@ -200,6 +211,7 @@ function SidebarGroup({
               item={child}
               active={pathname === child.href}
               collapsed={false}
+              onNav={onNav}
             />
           ))}
         </div>
@@ -210,145 +222,201 @@ function SidebarGroup({
 
 export function Sidebar() {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
+  const { open: mobileOpen, close: closeMobile } = useMobileMenu();
   const [collapsed, setCollapsed] = useState(false);
   const [adminHov, setAdminHov] = useState(false);
 
+  useEffect(() => {
+    closeMobile();
+  }, [pathname, closeMobile]);
+
+  const effectiveCollapsed = isMobile ? false : collapsed;
+  const sidebarWidth = isMobile ? 260 : effectiveCollapsed ? 60 : 230;
+
+  const visible = isMobile ? mobileOpen : true;
+
   return (
-    <div
-      style={{
-        width: collapsed ? 60 : 230,
-        height: "100vh",
-        position: "fixed",
-        left: 0,
-        top: 0,
-        background: "var(--surface)",
-        borderRight: "1px solid var(--border)",
-        padding: "20px 0",
-        display: "flex",
-        flexDirection: "column",
-        transition: "width 0.3s cubic-bezier(0.16,1,0.3,1)",
-        zIndex: 100,
-        overflow: "hidden",
-      }}
-    >
-      {/* Logo */}
-      <div
-        style={{
-          padding: collapsed ? "0 12px 20px" : "0 20px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          cursor: "pointer",
-        }}
-        onClick={() => setCollapsed(!collapsed)}
-      >
-        <img
-          src="/logo-moi-dark.svg"
-          alt="MOI"
+    <>
+      {/* Backdrop for mobile overlay */}
+      {isMobile && mobileOpen && (
+        <div
+          onClick={closeMobile}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            flexShrink: 0,
-            objectFit: "contain",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 199,
+            backdropFilter: "blur(2px)",
           }}
         />
-        {!collapsed && (
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--text)",
-              letterSpacing: "-0.01em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            MOI Protocol
-          </span>
-        )}
-      </div>
+      )}
 
       <div
         style={{
-          height: 1,
-          background: "var(--border)",
-          margin: collapsed ? "0 8px 12px" : "0 16px 12px",
-        }}
-      />
-
-      {/* Nav Items */}
-      <div
-        style={{
-          flex: 1,
-          padding: collapsed ? "0 8px" : "0 10px",
+          width: sidebarWidth,
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          background: "var(--surface)",
+          borderRight: "1px solid var(--border)",
+          padding: "20px 0",
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          transition: isMobile
+            ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)"
+            : "width 0.3s cubic-bezier(0.16,1,0.3,1)",
+          zIndex: 200,
+          overflow: "hidden",
+          transform: visible ? "translateX(0)" : "translateX(-100%)",
         }}
       >
-        {NAV_ITEMS.map((item) =>
-          item.children && item.children.length > 0 ? (
-            <SidebarGroup
-              key={item.id}
-              item={item}
-              pathname={pathname}
-              collapsed={collapsed}
-            />
-          ) : (
-            <SidebarItem
-              key={item.id}
-              item={item}
-              active={pathname === item.href}
-              collapsed={collapsed}
-            />
-          )
-        )}
-      </div>
-
-      <div
-        style={{
-          marginTop: "auto",
-          borderTop: "1px solid var(--border)",
-          margin: collapsed ? "12px 8px 0" : "12px 16px 0",
-          padding: collapsed ? "12px 0 16px" : "12px 0 20px",
-        }}
-      >
-        <Link
-          href="/admin"
-          title="Admin"
-          onMouseEnter={() => setAdminHov(true)}
-          onMouseLeave={() => setAdminHov(false)}
+        {/* Logo */}
+        <div
           style={{
+            padding: effectiveCollapsed ? "0 12px 20px" : "0 20px 20px",
             display: "flex",
             alignItems: "center",
             gap: 10,
-            padding: collapsed ? "10px 12px" : "9px 14px",
-            borderRadius: 10,
-            textDecoration: "none",
-            fontSize: 13,
-            fontWeight: pathname === "/admin" ? 600 : 500,
-            color:
-              pathname === "/admin"
-                ? "var(--accent)"
-                : adminHov
-                  ? "var(--text)"
-                  : "var(--text-muted)",
-            background:
-              pathname === "/admin"
-                ? "var(--accent-dim)"
-                : adminHov
-                  ? "rgba(255,255,255,0.03)"
-                  : "transparent",
-            transition: "color 0.15s ease, background 0.15s ease",
-            justifyContent: collapsed ? "center" : "flex-start",
+            cursor: isMobile ? "default" : "pointer",
+          }}
+          onClick={() => {
+            if (!isMobile) setCollapsed(!collapsed);
           }}
         >
-          <span style={{ fontSize: 16, width: 20, textAlign: "center", flexShrink: 0 }}>
-            ⧉
-          </span>
-          {!collapsed && <span>Admin</span>}
-        </Link>
+          <img
+            src="/logo-moi-dark.svg"
+            alt="MOI"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              flexShrink: 0,
+              objectFit: "contain",
+            }}
+          />
+          {!effectiveCollapsed && (
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "var(--text)",
+                letterSpacing: "-0.01em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              MOI Protocol
+            </span>
+          )}
+
+          {/* Close button on mobile */}
+          {isMobile && (
+            <button
+              onClick={closeMobile}
+              aria-label="Close menu"
+              style={{
+                marginLeft: "auto",
+                background: "none",
+                border: "none",
+                color: "var(--text-muted)",
+                fontSize: 20,
+                cursor: "pointer",
+                padding: "4px 8px",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div
+          style={{
+            height: 1,
+            background: "var(--border)",
+            margin: effectiveCollapsed ? "0 8px 12px" : "0 16px 12px",
+          }}
+        />
+
+        {/* Nav Items */}
+        <div
+          style={{
+            flex: 1,
+            padding: effectiveCollapsed ? "0 8px" : "0 10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            overflowY: "auto",
+          }}
+        >
+          {NAV_ITEMS.map((item) =>
+            item.children && item.children.length > 0 ? (
+              <SidebarGroup
+                key={item.id}
+                item={item}
+                pathname={pathname}
+                collapsed={effectiveCollapsed}
+                onNav={isMobile ? closeMobile : undefined}
+              />
+            ) : (
+              <SidebarItem
+                key={item.id}
+                item={item}
+                active={pathname === item.href}
+                collapsed={effectiveCollapsed}
+                onNav={isMobile ? closeMobile : undefined}
+              />
+            )
+          )}
+        </div>
+
+        <div
+          style={{
+            marginTop: "auto",
+            borderTop: "1px solid var(--border)",
+            margin: effectiveCollapsed ? "12px 8px 0" : "12px 16px 0",
+            padding: effectiveCollapsed ? "12px 0 16px" : "12px 0 20px",
+          }}
+        >
+          <Link
+            href="/admin"
+            title="Admin"
+            onClick={isMobile ? closeMobile : undefined}
+            onMouseEnter={() => setAdminHov(true)}
+            onMouseLeave={() => setAdminHov(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: effectiveCollapsed ? "10px 12px" : "9px 14px",
+              borderRadius: 10,
+              textDecoration: "none",
+              fontSize: 13,
+              fontWeight: pathname === "/admin" ? 600 : 500,
+              color:
+                pathname === "/admin"
+                  ? "var(--accent)"
+                  : adminHov
+                    ? "var(--text)"
+                    : "var(--text-muted)",
+              background:
+                pathname === "/admin"
+                  ? "var(--accent-dim)"
+                  : adminHov
+                    ? "rgba(255,255,255,0.03)"
+                    : "transparent",
+              transition: "color 0.15s ease, background 0.15s ease",
+              justifyContent: effectiveCollapsed ? "center" : "flex-start",
+            }}
+          >
+            <span style={{ fontSize: 16, width: 20, textAlign: "center", flexShrink: 0 }}>
+              ⧉
+            </span>
+            {!effectiveCollapsed && <span>Admin</span>}
+          </Link>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

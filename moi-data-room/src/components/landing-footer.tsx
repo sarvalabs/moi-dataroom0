@@ -72,7 +72,7 @@ const SOCIAL_LINKS: {
 
 export function LandingFooter() {
   return (
-    <footer className="mt-20 -mx-14 w-[calc(100%+7rem)] shrink-0 border-t border-border bg-bg px-12 pb-14 pt-10 max-[600px]:px-6 max-[600px]:pb-10 max-[600px]:pt-8">
+    <footer className="mt-12 -mx-5 w-[calc(100%+2.5rem)] shrink-0 border-t border-border bg-bg px-5 pb-10 pt-8 md:mt-20 md:-mx-14 md:w-[calc(100%+7rem)] md:px-12 md:pb-14 md:pt-10">
       <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-6 pr-20 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-6 max-[600px]:pr-0">
         <div className="flex items-center gap-6 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-6">
           <img

@@ -124,20 +124,20 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-bold tracking-[-0.02em] text-text">
+          <h2 className="text-lg font-bold tracking-[-0.02em] text-text sm:text-[22px]">
             Admin Dashboard
           </h2>
-          <p className="mt-1 text-[13px] text-text-muted">
-            Manage uploads.             To use a Zenodo record as the open target from lists, click{" "}
+          <p className="mt-1 hidden text-[13px] text-text-muted sm:block">
+            Manage uploads. To use a Zenodo record as the open target from lists, click{" "}
             <strong className="font-semibold text-text-dim">Edit</strong> and paste the full record URL
             (e.g. <code className="text-[12px] text-text-muted">https://zenodo.org/records/…</code>).{" "}
             Assign each home hero tile under <strong className="font-semibold text-text-dim">Home slot</strong>{" "}
             (one document per slot).
           </p>
         </div>
-        <Button size="md" onClick={() => setShowModal(true)}>
+        <Button size="md" onClick={() => setShowModal(true)} className="w-full sm:w-auto">
           + Add Document
         </Button>
       </div>

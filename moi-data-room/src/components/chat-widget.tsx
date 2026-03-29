@@ -501,10 +501,10 @@ export function ChatBot() {
         onClick={() => setOpen(!open)}
         style={{
           position: "fixed",
-          bottom: 24,
-          right: 24,
-          width: 54,
-          height: 54,
+          bottom: 16,
+          right: 16,
+          width: 48,
+          height: 48,
           borderRadius: 16,
           background: "linear-gradient(135deg, #7b61ff 0%, #6d4fef 100%)",
           display: "flex",
@@ -525,14 +525,15 @@ export function ChatBot() {
       {/* Chat Window */}
       {open && (
         <div
+          className="chat-window-mobile"
           style={{
             position: "fixed",
-            bottom: 88,
-            right: 24,
+            bottom: 72,
+            right: 16,
             width: 420,
-            maxWidth: "calc(100vw - 48px)",
+            maxWidth: "calc(100vw - 32px)",
             height: 580,
-            maxHeight: "calc(100vh - 120px)",
+            maxHeight: "calc(100vh - 100px)",
             borderRadius: 20,
             overflow: "hidden",
             background: "#0f0f12",

@@ -154,9 +154,9 @@ export default function DocViewerPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-text">
+          <h1 className="text-lg font-bold tracking-[-0.02em] text-text sm:text-[22px]">
             {meta?.title ?? "Document"}
           </h1>
           {total > 0 && (
@@ -165,7 +165,7 @@ export default function DocViewerPage() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
             size="sm"

@@ -55,22 +55,22 @@ function DocRow({
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.06 + index * 0.05, duration: 0.3 }}
-        className="group grid grid-cols-[1fr_100px_100px_120px] items-center gap-3 rounded-[10px] border border-transparent px-5 py-4 transition-all duration-200 hover:border-border hover:bg-surface-2"
+        className="group grid grid-cols-[1fr_60px] items-center gap-3 rounded-[10px] border border-transparent px-4 py-3 transition-all duration-200 hover:border-border hover:bg-surface-2 sm:grid-cols-[1fr_80px_80px_100px] sm:px-5 sm:py-4"
         style={{ cursor: "pointer" }}
       >
         <div>
           <div className="mb-1 text-sm font-semibold text-text">{doc.title}</div>
           <div className="text-xs leading-relaxed text-text-muted">{doc.desc}</div>
         </div>
-        <div>
+        <div className="hidden sm:block">
           <Pill>{doc.type}</Pill>
         </div>
-        <div className="text-[13px] text-text-dim">
+        <div className="hidden text-[13px] text-text-dim sm:block">
           {doc.views.toLocaleString()}
         </div>
         <div className="text-right">
-          <span className="text-xs font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
-            {loading ? "Opening..." : "Open in new tab ↗"}
+          <span className="text-xs font-medium text-accent sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+            {loading ? "Opening..." : "Open ↗"}
           </span>
         </div>
       </motion.div>
@@ -95,16 +95,11 @@ export function DocTable({
       </p>
       <div className="flex flex-col gap-0.5">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_100px_100px_120px] gap-3 rounded-[10px] bg-surface px-5 py-2.5">
-          {["Document", "Type", "Views", ""].map((h, i) => (
-            <div
-              key={h || "action"}
-              className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted"
-              style={{ textAlign: i === 3 ? "right" : "left" }}
-            >
-              {h}
-            </div>
-          ))}
+        <div className="grid grid-cols-[1fr_60px] gap-3 rounded-[10px] bg-surface px-4 py-2.5 sm:grid-cols-[1fr_80px_80px_100px] sm:px-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">Document</div>
+          <div className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted sm:block">Type</div>
+          <div className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted sm:block">Views</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted text-right" />
         </div>
         {/* Rows */}
         {docs.map((doc, i) => (
