@@ -311,7 +311,8 @@ export default function HomePage() {
   const row2 = HERO_CARDS.filter((c) => c.row === 2);
 
   const openDocDirect = useCallback(
-    async (docId: string, email?: string) => {
+    async (docId: string, email?: string, preOpenedTab?: Window | null) => {
+      const tab = preOpenedTab ?? window.open("about:blank", "_blank");
       try {
         const endpoint = email ? "/api/document-access" : "/api/download";
         const res = await fetch(endpoint, {
@@ -324,8 +325,13 @@ export default function HomePage() {
         });
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
-        window.open(data.url, "_blank", "noopener,noreferrer");
+        if (tab && !tab.closed) {
+          tab.location.href = data.url;
+        } else {
+          window.location.href = data.url;
+        }
       } catch {
+        if (tab && !tab.closed) tab.close();
         alert("Could not open document. Please try again.");
       }
     },
@@ -340,12 +346,14 @@ export default function HomePage() {
       if (doc?.require_email) {
         const stored = getStoredLeadEmail();
         if (stored) {
-          openDocDirect(docId, stored);
+          const tab = window.open("about:blank", "_blank");
+          openDocDirect(docId, stored, tab);
         } else {
           setGatedDoc({ id: docId, title: doc.title });
         }
       } else {
-        openDocDirect(docId);
+        const tab = window.open("about:blank", "_blank");
+        openDocDirect(docId, undefined, tab);
       }
     },
     [docs, openDocDirect],
@@ -436,7 +444,8 @@ export default function HomePage() {
         <EmailGateModal
           docTitle={gatedDoc.title}
           onSubmit={async (email) => {
-            await openDocDirect(gatedDoc.id, email);
+            const tab = window.open("about:blank", "_blank");
+            await openDocDirect(gatedDoc.id, email, tab);
             setGatedDoc(null);
           }}
           onClose={() => setGatedDoc(null)}

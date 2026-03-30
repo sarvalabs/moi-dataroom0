@@ -25,6 +25,9 @@ function DocRow({
   const openDoc = async (email?: string) => {
     if (!doc.id || loading) return;
     setLoading(true);
+    // Open window immediately while still in user-gesture context (Safari blocks
+    // window.open after an await)
+    const tab = window.open("about:blank", "_blank");
     try {
       const endpoint = email ? "/api/document-access" : "/api/download";
       const res = await fetch(endpoint, {
@@ -39,8 +42,13 @@ function DocRow({
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (tab && !tab.closed) {
+        tab.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
     } catch {
+      if (tab && !tab.closed) tab.close();
       alert("Could not open document. Please try again.");
     } finally {
       setLoading(false);
@@ -122,6 +130,7 @@ export function DocTable({
 
   const handleEmailSubmit = async (email: string) => {
     if (!gatedDoc?.id) return;
+    const tab = window.open("about:blank", "_blank");
     try {
       const res = await fetch("/api/document-access", {
         method: "POST",
@@ -131,8 +140,13 @@ export function DocTable({
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (tab && !tab.closed) {
+        tab.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
     } catch {
+      if (tab && !tab.closed) tab.close();
       alert("Could not open document. Please try again.");
     } finally {
       setGatedDoc(null);
