@@ -1,28 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Pill } from "./pill";
+import { EmailGateModal, getStoredLeadEmail } from "./email-gate-modal";
 import type { DocumentItem } from "@/lib/constants";
+
+type DocWithMeta = DocumentItem & {
+  id?: string;
+  allow_download?: boolean;
+  require_email?: boolean;
+};
 
 function DocRow({
   doc,
   index,
+  onEmailGateRequest,
 }: {
-  doc: DocumentItem & { id?: string; allow_download?: boolean };
+  doc: DocWithMeta;
   index: number;
+  onEmailGateRequest: (doc: DocWithMeta) => void;
 }) {
   const [loading, setLoading] = useState(false);
 
-  const handleOpen = async () => {
+  const openDoc = async (email?: string) => {
     if (!doc.id || loading) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/download", {
+      const endpoint = email ? "/api/document-access" : "/api/download";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ documentId: doc.id }),
+        body: JSON.stringify(
+          email
+            ? { documentId: doc.id, email }
+            : { documentId: doc.id },
+        ),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
@@ -34,6 +47,20 @@ function DocRow({
     }
   };
 
+  const handleOpen = () => {
+    if (!doc.id || loading) return;
+    if (doc.require_email) {
+      const stored = getStoredLeadEmail();
+      if (stored) {
+        openDoc(stored);
+      } else {
+        onEmailGateRequest(doc);
+      }
+    } else {
+      openDoc();
+    }
+  };
+
   return (
     <div
       onClick={handleOpen}
@@ -42,7 +69,7 @@ function DocRow({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          void handleOpen();
+          handleOpen();
         }
       }}
       style={{
@@ -51,15 +78,21 @@ function DocRow({
         pointerEvents: doc.id ? "auto" : "none",
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.06 + index * 0.05, duration: 0.3 }}
+      <div
         className="group grid grid-cols-[1fr_60px] items-center gap-3 rounded-[10px] border border-transparent px-4 py-3 transition-all duration-200 hover:border-border hover:bg-surface-2 sm:grid-cols-[1fr_80px_80px_100px] sm:px-5 sm:py-4"
-        style={{ cursor: "pointer" }}
+        style={{
+          cursor: "pointer",
+          animation: `fadeSlideUp 0.3s ease both`,
+          animationDelay: `${0.06 + index * 0.05}s`,
+        }}
       >
         <div>
-          <div className="mb-1 text-sm font-semibold text-text">{doc.title}</div>
+          <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-text">
+            {doc.title}
+            {doc.require_email && (
+              <span title="Email required" className="text-[11px] text-accent">🔒</span>
+            )}
+          </div>
           <div className="text-xs leading-relaxed text-text-muted">{doc.desc}</div>
         </div>
         <div className="hidden sm:block">
@@ -73,7 +106,7 @@ function DocRow({
             {loading ? "Opening..." : "Open ↗"}
           </span>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -82,9 +115,30 @@ export function DocTable({
   docs,
   sectionTitle,
 }: {
-  docs: (DocumentItem & { id?: string; allow_download?: boolean })[];
+  docs: DocWithMeta[];
   sectionTitle: string;
 }) {
+  const [gatedDoc, setGatedDoc] = useState<DocWithMeta | null>(null);
+
+  const handleEmailSubmit = async (email: string) => {
+    if (!gatedDoc?.id) return;
+    try {
+      const res = await fetch("/api/document-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ documentId: gatedDoc.id, email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Could not open document. Please try again.");
+    } finally {
+      setGatedDoc(null);
+    }
+  };
+
   return (
     <div>
       <h2 className="text-[22px] font-bold tracking-[-0.02em] text-text">
@@ -103,9 +157,22 @@ export function DocTable({
         </div>
         {/* Rows */}
         {docs.map((doc, i) => (
-          <DocRow key={"id" in doc && doc.id ? doc.id : doc.title} doc={doc} index={i} />
+          <DocRow
+            key={"id" in doc && doc.id ? doc.id : doc.title}
+            doc={doc}
+            index={i}
+            onEmailGateRequest={setGatedDoc}
+          />
         ))}
       </div>
+
+      {gatedDoc && (
+        <EmailGateModal
+          docTitle={gatedDoc.title}
+          onSubmit={handleEmailSubmit}
+          onClose={() => setGatedDoc(null)}
+        />
+      )}
     </div>
   );
 }

@@ -37,10 +37,20 @@ interface AdminStats {
   topDocs: { title: string; views: number }[];
 }
 
+interface Lead {
+  id: string;
+  email: string;
+  document_id: string;
+  document_title: string;
+  ip_address: string | null;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const [docs, setDocs] = useState<Document[]>([]);
   const [stats, setStats] = useState<AdminStats>({ chatQueries: 0, topDocs: [] });
   const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
 
@@ -54,6 +64,18 @@ export default function AdminDashboard() {
       setDocs([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/leads", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setLeads(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silent
     }
   }, []);
 
@@ -72,7 +94,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDocs();
     fetchStats();
-  }, [fetchDocs, fetchStats]);
+    fetchLeads();
+  }, [fetchDocs, fetchStats, fetchLeads]);
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -98,6 +121,23 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error("Toggle failed");
       setDocs((prev) =>
         prev.map((d) => (d.id === id ? { ...d, allow_download: !current } : d))
+      );
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const handleToggleEmailGate = useCallback(async (id: string, current: boolean) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ require_email: !current }),
+      });
+      if (!res.ok) throw new Error("Toggle failed");
+      setDocs((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, require_email: !current } : d))
       );
     } catch {
       // silent
@@ -168,6 +208,12 @@ export default function AdminDashboard() {
             {stats.chatQueries}
           </div>
         </BentoCard>
+        <BentoCard>
+          <div className="mb-2 text-xs font-medium text-text-muted">Email Leads</div>
+          <div className="text-[28px] font-bold tracking-[-0.03em] text-text">
+            {leads.length}
+          </div>
+        </BentoCard>
       </div>
 
       {/* Most Viewed Documents */}
@@ -217,6 +263,60 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Captured Leads */}
+      {leads.length > 0 && (
+        <div className="mb-8">
+          <BentoCard>
+            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+              Captured Leads ({leads.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1.2fr 1.2fr 0.8fr",
+                  gap: 8,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "var(--surface-2)",
+                  marginBottom: 4,
+                  minWidth: 500,
+                }}
+              >
+                {["Email", "Document", "Date"].map((h) => (
+                  <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {h}
+                  </div>
+                ))}
+              </div>
+              {leads.slice(0, 50).map((lead) => (
+                <div
+                  key={lead.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.2fr 1.2fr 0.8fr",
+                    gap: 8,
+                    padding: "10px 12px",
+                    borderBottom: "1px solid var(--border)",
+                    minWidth: 500,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                    {lead.email}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                    {lead.document_title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {new Date(lead.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </BentoCard>
+        </div>
+      )}
+
       {/* Document Management Table */}
       <BentoCard>
         <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -235,16 +335,16 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 56px 196px",
+                gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 76px 56px 196px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 1040,
+                minWidth: 1120,
               }}
             >
-              {["Document", "Zenodo", "Category", "Home slot", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
+              {["Document", "Zenodo", "Category", "Home slot", "Status", "Embeddings", "Download", "Email", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
@@ -259,6 +359,7 @@ export default function AdminDashboard() {
                 onDelete={() => handleDelete(doc.id)}
                 onReindex={() => handleReindex(doc.id)}
                 onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
+                onToggleEmailGate={() => handleToggleEmailGate(doc.id, doc.require_email)}
                 onEdit={() => setEditingDoc(doc)}
               />
             ))}
@@ -303,6 +404,7 @@ function EditModal({
   const [homeHeroSlot, setHomeHeroSlot] = useState<string>(
     doc.home_hero_slot && isHeroCardId(doc.home_hero_slot) ? doc.home_hero_slot : ""
   );
+  const [requireEmail, setRequireEmail] = useState(doc.require_email ?? false);
   const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -334,6 +436,7 @@ function EditModal({
         title: title.trim(),
         description: description.trim() || null,
         category,
+        require_email: requireEmail,
         home_hero_slot: homeHeroSlot.trim() ? homeHeroSlot.trim() : null,
         external_url: normalized,
       };
@@ -435,6 +538,30 @@ function EditModal({
           </p>
         </div>
 
+        <div className="mb-4 flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={requireEmail}
+            onClick={() => setRequireEmail(!requireEmail)}
+            disabled={saving}
+            className="relative h-5 w-9 rounded-full transition-colors"
+            style={{
+              background: requireEmail ? "var(--accent)" : "var(--border)",
+            }}
+          >
+            <span
+              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+              style={{
+                transform: requireEmail ? "translateX(16px)" : "translateX(0)",
+              }}
+            />
+          </button>
+          <label className="text-xs font-medium text-text-dim">
+            Require email to access (lead capture)
+          </label>
+        </div>
+
         <div className="mb-4">
           <label className="mb-1.5 block text-xs font-semibold text-text-dim">
             Zenodo / public page URL (optional)
@@ -472,12 +599,14 @@ function DocRow({
   onDelete,
   onReindex,
   onToggleDownload,
+  onToggleEmailGate,
   onEdit,
 }: {
   doc: Document;
   onDelete: () => void;
   onReindex: () => void;
   onToggleDownload: () => void;
+  onToggleEmailGate: () => void;
   onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
@@ -489,14 +618,14 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 56px 196px",
+        gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 76px 56px 196px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 1040,
+        minWidth: 1120,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{doc.title}</div>
@@ -560,6 +689,37 @@ function DocRow({
               position: "absolute",
               top: 2,
               left: doc.allow_download ? 18 : 2,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "#fff",
+              transition: "left 0.2s",
+            }}
+          />
+        </button>
+      </div>
+      <div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={doc.require_email}
+          onClick={onToggleEmailGate}
+          style={{
+            position: "relative",
+            width: 34,
+            height: 18,
+            borderRadius: 9,
+            border: "none",
+            cursor: "pointer",
+            background: doc.require_email ? "var(--accent)" : "var(--border)",
+            transition: "background 0.2s",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: doc.require_email ? 18 : 2,
               width: 14,
               height: 14,
               borderRadius: "50%",

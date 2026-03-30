@@ -40,6 +40,7 @@ export function UploadModal({
   const [publicUrl, setPublicUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
+  const [requireEmail, setRequireEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +147,7 @@ export function UploadModal({
           ...(externalUrl ? { external_url: externalUrl } : {}),
           file_type: fileTypeFromMime(resolvedMime),
           allow_download: allowDownload,
+          require_email: requireEmail,
           ...(homeHeroSlot.trim() ? { home_hero_slot: homeHeroSlot.trim() } : {}),
         }),
       });
@@ -274,6 +276,33 @@ export function UploadModal({
             </button>
             <label className="text-xs font-medium text-text-dim">
               Allow users to download this file
+            </label>
+          </div>
+        )}
+
+        {/* Require email */}
+        {category && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={requireEmail}
+              onClick={() => setRequireEmail(!requireEmail)}
+              disabled={loading}
+              className="relative h-5 w-9 rounded-full transition-colors"
+              style={{
+                background: requireEmail ? "var(--accent)" : "var(--border)",
+              }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                style={{
+                  transform: requireEmail ? "translateX(16px)" : "translateX(0)",
+                }}
+              />
+            </button>
+            <label className="text-xs font-medium text-text-dim">
+              Require email to access (lead capture)
             </label>
           </div>
         )}

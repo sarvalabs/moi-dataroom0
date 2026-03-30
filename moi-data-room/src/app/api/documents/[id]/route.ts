@@ -14,6 +14,7 @@ const PATCHABLE = new Set([
   "file_type",
   "status",
   "allow_download",
+  "require_email",
 ]);
 
 export async function GET(
@@ -24,7 +25,7 @@ export async function GET(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("documents")
-    .select("id, title, description, file_type, category, created_at, allow_download")
+    .select("id, title, description, file_type, category, created_at, allow_download, require_email")
     .eq("id", id)
     .eq("status", "published")
     .single();

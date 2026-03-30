@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     file_type,
     status,
     allow_download,
+    require_email,
     home_hero_slot: rawHomeSlot,
   } = body;
   if (!title || !category) {
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
       file_type: resolvedFileType,
       status: status ?? "published",
       allow_download: allow_download ?? true,
+      require_email: require_email ?? false,
       show_on_overview: !!homeHeroSlot,
       home_hero_slot: homeHeroSlot,
       uploaded_by: null,

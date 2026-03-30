@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { StatCardsGrid } from "@/components/stat-card";
 import { LandingFooter } from "@/components/landing-footer";
+import { EmailGateModal, getStoredLeadEmail } from "@/components/email-gate-modal";
 import { HERO_CARDS, type HeroCard } from "@/lib/constants";
 
 interface ApiDoc {
@@ -12,6 +13,7 @@ interface ApiDoc {
   category: string;
   show_on_overview?: boolean;
   home_hero_slot?: string | null;
+  require_email?: boolean;
 }
 
 function titleMatchesAnyHint(docTitle: string, card: HeroCard): boolean {
@@ -301,6 +303,7 @@ function AssetCard({
 
 export default function HomePage() {
   const [docs, setDocs] = useState<ApiDoc[]>([]);
+  const [gatedDoc, setGatedDoc] = useState<{ id: string; title: string } | null>(null);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -320,16 +323,17 @@ export default function HomePage() {
   const row1 = HERO_CARDS.filter((c) => c.row === 1);
   const row2 = HERO_CARDS.filter((c) => c.row === 2);
 
-  const handleOpen = useCallback(
-    async (event: React.MouseEvent<HTMLAnchorElement>, docId?: string) => {
-      event.preventDefault();
-      if (!docId) return;
+  const openDocDirect = useCallback(
+    async (docId: string, email?: string) => {
       try {
-        const res = await fetch("/api/download", {
+        const endpoint = email ? "/api/document-access" : "/api/download";
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ documentId: docId }),
+          body: JSON.stringify(
+            email ? { documentId: docId, email } : { documentId: docId },
+          ),
         });
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error ?? "Failed to open document");
@@ -338,7 +342,26 @@ export default function HomePage() {
         alert("Could not open document. Please try again.");
       }
     },
-    []
+    [],
+  );
+
+  const handleOpen = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, docId?: string) => {
+      event.preventDefault();
+      if (!docId) return;
+      const doc = docs.find((d) => d.id === docId);
+      if (doc?.require_email) {
+        const stored = getStoredLeadEmail();
+        if (stored) {
+          openDocDirect(docId, stored);
+        } else {
+          setGatedDoc({ id: docId, title: doc.title });
+        }
+      } else {
+        openDocDirect(docId);
+      }
+    },
+    [docs, openDocDirect],
   );
 
   return (
@@ -420,6 +443,17 @@ export default function HomePage() {
       </div>
       </div>
       <LandingFooter />
+
+      {gatedDoc && (
+        <EmailGateModal
+          docTitle={gatedDoc.title}
+          onSubmit={async (email) => {
+            await openDocDirect(gatedDoc.id, email);
+            setGatedDoc(null);
+          }}
+          onClose={() => setGatedDoc(null)}
+        />
+      )}
     </div>
   );
 }
