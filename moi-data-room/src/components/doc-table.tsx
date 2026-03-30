@@ -86,14 +86,14 @@ function DocRow({
           animationDelay: `${0.06 + index * 0.05}s`,
         }}
       >
-        <div>
+        <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-text">
-            {doc.title}
+            <span className="truncate">{doc.title}</span>
             {doc.require_email && (
-              <span title="Email required" className="text-[11px] text-accent">🔒</span>
+              <span title="Email required" className="shrink-0 text-[11px] text-accent">🔒</span>
             )}
           </div>
-          <div className="text-xs leading-relaxed text-text-muted">{doc.desc}</div>
+          <div className="text-xs leading-relaxed text-text-muted line-clamp-2">{doc.desc}</div>
         </div>
         <div className="hidden sm:block">
           <Pill>{doc.type}</Pill>

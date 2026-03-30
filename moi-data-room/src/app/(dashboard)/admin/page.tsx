@@ -270,7 +270,8 @@ export default function AdminDashboard() {
             <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
               Captured Leads ({leads.length})
             </h3>
-            <div className="overflow-x-auto">
+            {/* Desktop: grid table */}
+            <div className="hidden sm:block">
               <div
                 style={{
                   display: "grid",
@@ -280,7 +281,6 @@ export default function AdminDashboard() {
                   borderRadius: 8,
                   background: "var(--surface-2)",
                   marginBottom: 4,
-                  minWidth: 500,
                 }}
               >
                 {["Email", "Document", "Date"].map((h) => (
@@ -298,10 +298,9 @@ export default function AdminDashboard() {
                     gap: 8,
                     padding: "10px 12px",
                     borderBottom: "1px solid var(--border)",
-                    minWidth: 500,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {lead.email}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
@@ -310,6 +309,19 @@ export default function AdminDashboard() {
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {new Date(lead.created_at).toLocaleDateString()}
                   </div>
+                </div>
+              ))}
+            </div>
+            {/* Mobile: stacked cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+              {leads.slice(0, 30).map((lead) => (
+                <div
+                  key={lead.id}
+                  className="rounded-lg border border-border bg-surface-2 px-3.5 py-3"
+                >
+                  <div className="text-[13px] font-medium text-text truncate">{lead.email}</div>
+                  <div className="mt-1 text-[12px] text-text-dim truncate">{lead.document_title}</div>
+                  <div className="mt-0.5 text-[11px] text-text-muted">{new Date(lead.created_at).toLocaleDateString()}</div>
                 </div>
               ))}
             </div>
@@ -330,8 +342,9 @@ export default function AdminDashboard() {
             No documents uploaded yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            {/* Header */}
+          <>
+          {/* Desktop: wide grid table */}
+          <div className="hidden lg:block overflow-x-auto">
             <div
               style={{
                 display: "grid",
@@ -350,8 +363,6 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-
-            {/* Rows */}
             {docs.map((doc) => (
               <DocRow
                 key={doc.id}
@@ -364,6 +375,21 @@ export default function AdminDashboard() {
               />
             ))}
           </div>
+          {/* Mobile/tablet: stacked cards */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {docs.map((doc) => (
+              <MobileDocCard
+                key={doc.id}
+                doc={doc}
+                onDelete={() => handleDelete(doc.id)}
+                onReindex={() => handleReindex(doc.id)}
+                onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
+                onToggleEmailGate={() => handleToggleEmailGate(doc.id, doc.require_email)}
+                onEdit={() => setEditingDoc(doc)}
+              />
+            ))}
+          </div>
+          </>
         )}
       </BentoCard>
 
@@ -591,6 +617,102 @@ function EditModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileDocCard({
+  doc,
+  onDelete,
+  onReindex,
+  onToggleDownload,
+  onToggleEmailGate,
+  onEdit,
+}: {
+  doc: Document;
+  onDelete: () => void;
+  onReindex: () => void;
+  onToggleDownload: () => void;
+  onToggleEmailGate: () => void;
+  onEdit: () => void;
+}) {
+  const embStatus = doc.embedding_status ?? "pending";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-2 p-4">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold text-text truncate">{doc.title}</div>
+          <div className="mt-0.5 text-[12px] text-text-dim">
+            {CATEGORY_LABELS[doc.category] ?? doc.category}
+          </div>
+        </div>
+        <Pill variant={doc.status === "published" ? "green" : "amber"}>
+          {doc.status === "published" ? "Published" : doc.status}
+        </Pill>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
+        {doc.external_url && (
+          <span className="text-[11px] font-medium text-accent">Zenodo ✓</span>
+        )}
+        {doc.view_count !== undefined && doc.view_count > 0 && (
+          <span className="text-[11px] text-text-muted">{doc.view_count} views</span>
+        )}
+      </div>
+
+      <div className="mb-3 flex items-center gap-4">
+        <label className="flex items-center gap-2 text-[12px] text-text-dim">
+          <MiniToggle checked={doc.allow_download} onClick={onToggleDownload} />
+          Download
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-text-dim">
+          <MiniToggle checked={doc.require_email} onClick={onToggleEmailGate} />
+          Email gate
+        </label>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
+        <Button variant="ghost" size="sm" onClick={onReindex}>Re-index</Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">Delete</Button>
+      </div>
+    </div>
+  );
+}
+
+function MiniToggle({ checked, onClick }: { checked: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: 30,
+        height: 16,
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: checked ? "var(--accent)" : "var(--border)",
+        transition: "background 0.2s",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: checked ? 16 : 2,
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          background: "#fff",
+          transition: "left 0.2s",
+        }}
+      />
+    </button>
   );
 }
 

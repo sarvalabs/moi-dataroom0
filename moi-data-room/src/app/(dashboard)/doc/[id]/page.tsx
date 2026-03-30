@@ -82,12 +82,14 @@ export default function DocViewerPage() {
     return () => { cancelled = true; };
   }, [meta]);
 
-  // Render current page
+  // Render current page — scale down on small viewports for readability
   const renderPage = useCallback(async () => {
     if (!pdf || !canvasRef.current) return;
     try {
       const pg = await pdf.getPage(page);
-      const viewport = pg.getViewport({ scale: 1.5 });
+      const screenWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
+      const scale = screenWidth < 640 ? 1.0 : 1.5;
+      const viewport = pg.getViewport({ scale });
       const canvas = canvasRef.current;
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -199,14 +201,14 @@ export default function DocViewerPage() {
 
       {/* PDF Canvas */}
       <div
-        className="rounded-2xl border border-border bg-surface p-4"
-        style={{ userSelect: "none" }}
+        className="rounded-xl border border-border bg-surface p-2 sm:rounded-2xl sm:p-4"
+        style={{ userSelect: "none", WebkitOverflowScrolling: "touch" }}
         onContextMenu={(e) => e.preventDefault()}
       >
         <canvas
           ref={canvasRef}
           className="mx-auto"
-          style={{ maxWidth: "100%", height: "auto" }}
+          style={{ maxWidth: "100%", height: "auto", display: "block" }}
         />
       </div>
     </div>

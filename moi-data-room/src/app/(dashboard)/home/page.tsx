@@ -93,8 +93,8 @@ function PaperCard({
         borderBottomColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
         borderLeftColor: hov ? "rgba(123,97,255,0.3)" : "#222228",
         borderRadius: 16,
-        padding: "22px 20px 20px",
-        minHeight: 240,
+        padding: "18px 16px 16px",
+        minHeight: 200,
         transition: "border-color 0.3s ease, box-shadow 0.3s ease",
         boxShadow: hov ? "0 8px 40px rgba(0,0,0,0.25)" : "none",
       }}
@@ -116,29 +116,16 @@ function PaperCard({
 
       {/* Title */}
       <h3
-        style={{
-          fontFamily: "var(--font-display, 'Instrument Sans', sans-serif)",
-          fontSize: 28,
-          fontWeight: 700,
-          letterSpacing: "-0.03em",
-          color: "#fff",
-          margin: "0 0 8px 0",
-        }}
+        className="font-display text-[22px] font-bold tracking-[-0.03em] text-white sm:text-[28px]"
+        style={{ margin: "0 0 8px 0" }}
       >
         {card.title}
       </h3>
 
       {/* Description */}
       <p
-        style={{
-          fontSize: 15,
-          fontStyle: "italic",
-          fontWeight: 500,
-          color: "#E8E8ED",
-          lineHeight: 1.55,
-          margin: "0 0 22px 0",
-          flexGrow: 1,
-        }}
+        className="text-[13px] italic font-medium text-[#E8E8ED] leading-[1.55] sm:text-[15px]"
+        style={{ margin: "0 0 16px 0", flexGrow: 1 }}
       >
         {card.tagline}
       </p>
@@ -372,6 +359,7 @@ export default function HomePage() {
         className="animate-fade-in-up relative mb-8 px-0 pt-8 pb-6 md:mb-12 md:pt-16 md:pb-12"
       >
         <div
+          className="hidden sm:block"
           style={{
             position: "absolute",
             top: -100,
@@ -408,7 +396,7 @@ export default function HomePage() {
             href="https://calendly.com/aikrish/meet"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-accent bg-accent-dim px-7 py-3 text-sm font-sans font-semibold tracking-[0.01em] text-accent transition-all duration-200 hover:bg-accent-glow"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent bg-accent-dim px-7 py-3 text-sm font-sans font-semibold tracking-[0.01em] text-accent transition-all duration-200 hover:bg-accent-glow sm:w-auto"
           >
             Schedule a Call ↗
           </a>
