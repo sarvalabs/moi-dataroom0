@@ -98,19 +98,37 @@ export function UploadModal({
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      formData.set("category", category);
-      const uploadRes = await fetch("/api/upload", {
+      // Step 1: Get a signed upload URL (small JSON request — no body limit issues)
+      const urlRes = await fetch("/api/upload-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: resolvedMime,
+          category,
+        }),
+      });
+      if (!urlRes.ok) {
+        const data = await urlRes.json().catch(() => ({}));
+        throw new Error(data.error ?? urlRes.statusText);
+      }
+      const { path, signedUrl, token } = await urlRes.json();
+
+      // Step 2: PUT the file directly to Supabase Storage (bypasses Vercel body limit)
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": resolvedMime,
+          "x-upsert": "false",
+        },
+        body: file,
       });
       if (!uploadRes.ok) {
-        const data = await uploadRes.json().catch(() => ({}));
-        throw new Error(data.error ?? uploadRes.statusText);
+        const text = await uploadRes.text().catch(() => "");
+        throw new Error(`Storage upload failed: ${text || uploadRes.statusText}`);
       }
-      const { path } = await uploadRes.json();
 
       const externalUrl = publicUrl.trim()
         ? normalizeExternalUrl(publicUrl)
