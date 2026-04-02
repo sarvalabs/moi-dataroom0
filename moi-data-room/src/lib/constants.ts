@@ -37,7 +37,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
 export const STATS = [
   { label: "Accounts", value: "4.3K", icon: "👤", delta: "+12.3%" },
   { label: "Interactions", value: "14.4K", icon: "⚡", delta: "+8.7%" },
-  { label: "Consensus Nodes", value: "100", icon: "🔗", delta: "Active" },
+  { label: "Consensus Nodes", value: "2,100+", icon: "🔗", delta: "Active" },
   { label: "Community", value: "50K+", icon: "🌐", delta: "+22.1%" },
   { label: "KMOI TVL", value: "$79.0M", icon: "💎", delta: "+5.4%" },
 ] as const;
