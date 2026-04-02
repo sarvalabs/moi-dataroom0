@@ -63,7 +63,7 @@ function DocRow({
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.06 + index * 0.05, duration: 0.3 }}
-        className="group grid grid-cols-[1fr_100px_100px_120px] items-center gap-3 rounded-[10px] border border-transparent px-5 py-4 transition-all duration-200 hover:border-border hover:bg-surface-2"
+        className="group grid grid-cols-[1fr_100px_120px] items-center gap-3 rounded-[10px] border border-transparent px-5 py-4 transition-all duration-200 hover:border-border hover:bg-surface-2"
         style={{ cursor: "pointer" }}
       >
         <div>
@@ -72,9 +72,6 @@ function DocRow({
         </div>
         <div>
           <Pill>{doc.type}</Pill>
-        </div>
-        <div className="text-[13px] text-text-dim">
-          {doc.views.toLocaleString()}
         </div>
         <div className="text-right">
           <span className="hidden group-hover:inline-flex">
@@ -118,12 +115,12 @@ export function DocTable({
       </p>
       <div className="flex flex-col gap-0.5">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_100px_100px_120px] gap-3 rounded-[10px] bg-surface px-5 py-2.5">
-          {["Document", "Type", "Views", ""].map((h, i) => (
+        <div className="grid grid-cols-[1fr_100px_120px] gap-3 rounded-[10px] bg-surface px-5 py-2.5">
+          {["Document", "Type", ""].map((h, i) => (
             <div
               key={h || "action"}
               className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted"
-              style={{ textAlign: i === 3 ? "right" : "left" }}
+              style={{ textAlign: i === 2 ? "right" : "left" }}
             >
               {h}
             </div>
