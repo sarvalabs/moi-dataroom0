@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { ChatBot } from "@/components/chat-widget";
 import { NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { useMobileMenu } from "@/lib/use-mobile-menu";
 
 function findNavItem(items: readonly NavItem[], href: string): NavItem | undefined {
   for (const item of items) {
@@ -28,6 +29,21 @@ function findBreadcrumb(items: readonly NavItem[], href: string): NavItem[] {
   return [];
 }
 
+function HamburgerButton() {
+  const toggle = useMobileMenu((s) => s.toggle);
+  return (
+    <button
+      onClick={toggle}
+      aria-label="Open menu"
+      className="mr-3 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-text-dim md:hidden"
+    >
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <path d="M3 5h12M3 9h12M3 13h12" />
+      </svg>
+    </button>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -42,21 +58,20 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-bg font-sans text-text">
       <Sidebar />
       <div
+        className="flex min-h-screen min-w-0 flex-col ml-0 px-5 pt-5 md:ml-[230px] md:w-[calc(100%-230px)] md:px-14 md:pt-10"
         style={{
-          marginLeft: 230,
-          minHeight: "100vh",
-          padding: "40px 56px 80px",
-          maxWidth: 960,
           transition: "margin-left 0.3s ease",
           position: "relative",
+          boxSizing: "border-box",
         }}
       >
-        {/* Breadcrumb */}
-        <div className="mb-8 flex items-center gap-2 text-xs text-text-muted">
+        {/* Breadcrumb + hamburger */}
+        <div className="mb-6 flex shrink-0 items-center text-xs text-text-muted md:mb-8">
+          <HamburgerButton />
           <span className="cursor-pointer">Data Room</span>
           {activeId !== "home" && breadcrumb.length > 0 && breadcrumb.map((crumb, i) => (
             <span key={crumb.id} className="flex items-center gap-2">
-              <span className="text-border">›</span>
+              <span className="text-border ml-2">›</span>
               {i < breadcrumb.length - 1 ? (
                 <Link href={crumb.href} className="text-text-muted hover:text-text-dim transition-colors">
                   {crumb.label}
@@ -68,25 +83,13 @@ export default function DashboardLayout({
           ))}
           {activeId === "admin" && (
             <>
-              <span className="text-border">›</span>
-              <span className="text-text-dim">Admin</span>
+              <span className="text-border ml-2">›</span>
+              <span className="text-text-dim ml-2">Admin</span>
             </>
           )}
         </div>
-        {children}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 24,
-            right: 56,
-          }}
-        >
-          <Link
-            href="/admin"
-            className="text-[11px] text-text-muted hover:text-text-dim transition-colors"
-          >
-            Admin
-          </Link>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {children}
         </div>
       </div>
       <ChatBot />

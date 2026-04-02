@@ -1,5 +1,4 @@
 export type DocumentCategory =
-  | "overview"
   | "contextual_compute"
   | "engineering"
   | "business"
@@ -19,11 +18,17 @@ export interface Document {
   description: string | null;
   category: DocumentCategory;
   file_url: string | null;
+  /** Public URL (Zenodo, etc.) when the doc is link-only; opens in a new tab. */
+  external_url?: string | null;
   file_type: string;
   status: DocumentStatus;
   embedding_status: EmbeddingStatus;
   embedding_error: string | null;
   allow_download: boolean;
+  require_email: boolean;
+  show_on_overview: boolean;
+  /** Pinned to this hero tile on /home; must match `HERO_CARDS.id`. */
+  home_hero_slot?: string | null;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;

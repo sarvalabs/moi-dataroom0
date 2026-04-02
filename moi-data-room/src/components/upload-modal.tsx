@@ -2,23 +2,21 @@
 
 import { useState, useRef } from "react";
 import { Button } from "./button";
-import type { DocumentCategory } from "@/lib/constants";
+import {
+  type DocumentCategory,
+  HERO_CARDS,
+  heroHomeAdminLabel,
+} from "@/lib/constants";
+import { normalizeExternalUrl } from "@/lib/external-url";
+import { resolveUploadMime } from "@/lib/upload-allowed";
 
-const CATEGORIES: { value: DocumentCategory | "home"; label: string }[] = [
-  { value: "home", label: "Overview (Home)" },
+const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "contextual_compute", label: "Contextual Compute" },
   { value: "engineering", label: "Engineering" },
   { value: "business", label: "Business & GTM" },
   { value: "tokenomics", label: "Tokenomics" },
   { value: "research", label: "Research" },
   { value: "usecases", label: "Use Cases" },
-];
-
-const HOME_SLOTS = [
-  { id: "litepaper", title: "Litepaper", description: "MOI protocol overview", category: "overview" as DocumentCategory },
-  { id: "slide_deck", title: "Slide Deck", description: "Investor presentation", category: "business" as DocumentCategory },
-  { id: "yellow_paper", title: "Yellow Paper", description: "Protocol specification", category: "engineering" as DocumentCategory },
-  { id: "contextual_compute", title: "Contextual Compute", description: "The general theory of computation", category: "contextual_compute" as DocumentCategory },
 ];
 
 function fileTypeFromMime(mime: string): string {
@@ -35,81 +33,122 @@ export function UploadModal({
   onClose: () => void;
   onSuccess?: () => void;
 }) {
-  const [category, setCategory] = useState<DocumentCategory | "home" | "">("");
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [category, setCategory] = useState<DocumentCategory | "">("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [homeHeroSlot, setHomeHeroSlot] = useState("");
+  const [publicUrl, setPublicUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
+  const [requireEmail, setRequireEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isHome = category === "home";
-  const slot = HOME_SLOTS.find((s) => s.id === selectedSlot);
-
   const handleCategoryChange = (val: string) => {
-    setCategory(val as DocumentCategory | "home" | "");
-    setSelectedSlot("");
-    if (val !== "home") {
-      setTitle("");
-      setDescription("");
-    }
-  };
-
-  const handleSlotChange = (slotId: string) => {
-    setSelectedSlot(slotId);
-    const s = HOME_SLOTS.find((h) => h.id === slotId);
-    if (s) {
-      setTitle(s.title);
-      setDescription(s.description);
-    }
+    setCategory(val as DocumentCategory | "");
+    setTitle("");
+    setDescription("");
+    setPublicUrl("");
+    setHomeHeroSlot("");
+    setFile(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (loading) return;
     const f = e.dataTransfer.files[0];
     if (f) setFile(f);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (loading) return;
     const f = e.target.files?.[0];
     if (f) setFile(f);
   };
 
   const handleSubmit = async () => {
     setError(null);
+
+    if (!category) {
+      setError("Please select a category.");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    if (!file) {
+      setError("Please choose a file to upload.");
+      return;
+    }
+    const resolvedMime = resolveUploadMime(file);
+    if (!resolvedMime) {
+      setError(
+        "Only PDF, PPTX, or DOCX. If the file is correct, use a name ending in .pdf, .pptx, or .docx (drag-and-drop sometimes hides the type)."
+      );
+      return;
+    }
+    if (publicUrl.trim()) {
+      const n = normalizeExternalUrl(publicUrl);
+      if (!n) {
+        setError("Zenodo URL must be a valid https:// link or clear the field.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const formData = new FormData();
-      if (file) formData.set("file", file);
-      const uploadRes = await fetch("/api/upload", {
+      // Step 1: Get a signed upload URL (small JSON request — no body limit issues)
+      const urlRes = await fetch("/api/upload-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: resolvedMime,
+          category,
+        }),
+      });
+      if (!urlRes.ok) {
+        const data = await urlRes.json().catch(() => ({}));
+        throw new Error(data.error ?? urlRes.statusText);
+      }
+      const { path, signedUrl, token } = await urlRes.json();
+
+      // Step 2: PUT the file directly to Supabase Storage (bypasses Vercel body limit)
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": resolvedMime,
+          "x-upsert": "false",
+        },
+        body: file,
       });
       if (!uploadRes.ok) {
-        const data = await uploadRes.json().catch(() => ({}));
-        throw new Error(data.error ?? uploadRes.statusText);
+        const text = await uploadRes.text().catch(() => "");
+        throw new Error(`Storage upload failed: ${text || uploadRes.statusText}`);
       }
-      const { path } = await uploadRes.json();
 
-      // For home slots, use the slot's real category; otherwise use the selected category
-      const finalCategory = isHome && slot ? slot.category : category;
-      const finalTitle = isHome && slot ? slot.title : title.trim();
-      const finalDesc = isHome && slot ? slot.description : (description.trim() || null);
+      const externalUrl = publicUrl.trim()
+        ? normalizeExternalUrl(publicUrl)
+        : null;
 
       const docRes = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          title: finalTitle,
-          category: finalCategory,
-          description: finalDesc,
+          title: title.trim(),
+          category,
+          description: description.trim() || null,
           file_url: path,
-          file_type: file ? fileTypeFromMime(file.type) : "PDF",
+          ...(externalUrl ? { external_url: externalUrl } : {}),
+          file_type: fileTypeFromMime(resolvedMime),
           allow_download: allowDownload,
+          require_email: requireEmail,
+          ...(homeHeroSlot.trim() ? { home_hero_slot: homeHeroSlot.trim() } : {}),
         }),
       });
       if (!docRes.ok) {
@@ -137,7 +176,8 @@ export function UploadModal({
       >
         <h3 className="text-lg font-bold text-text">Upload Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Add a new document to the investor data room.
+          Upload a file (PDF, PPTX, DOCX). Optionally paste the Zenodo record page URL so Open goes
+          there; the file is still stored and used for AI indexing.
         </p>
 
         {/* Category */}
@@ -148,6 +188,7 @@ export function UploadModal({
           <select
             value={category}
             onChange={(e) => handleCategoryChange(e.target.value)}
+            disabled={loading}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
           >
             <option value=""></option>
@@ -159,45 +200,8 @@ export function UploadModal({
           </select>
         </div>
 
-        {/* Home slot selector */}
-        {isHome && (
-          <div className="mb-4">
-            <label className="mb-2 block text-xs font-semibold text-text-dim">
-              Select Document
-            </label>
-            <div className="flex flex-col gap-2">
-              {HOME_SLOTS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleSlotChange(s.id)}
-                  className="text-left transition-all"
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: selectedSlot === s.id
-                      ? "1.5px solid var(--accent)"
-                      : "1px solid var(--border)",
-                    background: selectedSlot === s.id
-                      ? "rgba(123,97,255,0.08)"
-                      : "var(--surface-2)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div className="text-[13px] font-medium" style={{
-                    color: selectedSlot === s.id ? "var(--accent-2)" : "var(--text)",
-                  }}>
-                    {s.title}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-text-muted">{s.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Title & Description — only for non-home categories */}
-        {!isHome && category && (
+        {/* Title & Description */}
+        {category && (
           <>
             <div className="mb-4">
               <label className="mb-1.5 block text-xs font-semibold text-text-dim">
@@ -206,6 +210,7 @@ export function UploadModal({
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={loading}
                 className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
               />
             </div>
@@ -216,20 +221,47 @@ export function UploadModal({
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={loading}
                 className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
               />
             </div>
           </>
         )}
 
+        {/* Home hero slot (optional) */}
+        {category && (
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              Home page hero slot (optional)
+            </label>
+            <select
+              value={homeHeroSlot}
+              onChange={(e) => setHomeHeroSlot(e.target.value)}
+              disabled={loading}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            >
+              <option value="">Not shown on home</option>
+              {HERO_CARDS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {heroHomeAdminLabel(c.id)}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              One document per tile; choosing a slot that is already taken replaces the previous doc.
+            </p>
+          </div>
+        )}
+
         {/* Download permission */}
-        {(isHome ? selectedSlot : category) && (
+        {category && (
           <div className="mb-4 flex items-center gap-3">
             <button
               type="button"
               role="switch"
               aria-checked={allowDownload}
               onClick={() => setAllowDownload(!allowDownload)}
+              disabled={loading}
               className="relative h-5 w-9 rounded-full transition-colors"
               style={{
                 background: allowDownload ? "var(--accent)" : "var(--border)",
@@ -248,25 +280,74 @@ export function UploadModal({
           </div>
         )}
 
-        {/* File drop */}
-        {(isHome ? selectedSlot : category) && (
+        {/* Require email */}
+        {category && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={requireEmail}
+              onClick={() => setRequireEmail(!requireEmail)}
+              disabled={loading}
+              className="relative h-5 w-9 rounded-full transition-colors"
+              style={{
+                background: requireEmail ? "var(--accent)" : "var(--border)",
+              }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                style={{
+                  transform: requireEmail ? "translateX(16px)" : "translateX(0)",
+                }}
+              />
+            </button>
+            <label className="text-xs font-medium text-text-dim">
+              Require email to access (lead capture)
+            </label>
+          </div>
+        )}
+
+        {/* File drop zone */}
+        {category && (
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="mb-6 cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-accent"
+            onClick={() => !loading && fileInputRef.current?.click()}
+            className="mb-4 cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-accent"
           >
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.pptx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileChange}
+              disabled={loading}
               className="hidden"
             />
             <div className="mb-2 text-2xl">{file ? "✓" : "📎"}</div>
             <div className="text-[13px] text-text-dim">
               {file ? file.name : "Drop file or click to browse"}
             </div>
+          </div>
+        )}
+
+        {/* Zenodo / public page (optional) */}
+        {category && (
+          <div className="mb-6">
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+              Zenodo record URL (optional)
+            </label>
+            <input
+              type="url"
+              value={publicUrl}
+              onChange={(e) => setPublicUrl(e.target.value)}
+              disabled={loading}
+              placeholder="https://zenodo.org/records/1234567"
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              Use the browser address from the Zenodo record page (not only the DOI). Lists and home
+              cards open this link; the PDF below is still embedded for the chatbot.
+            </p>
           </div>
         )}
 

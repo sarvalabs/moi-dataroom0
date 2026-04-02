@@ -5,10 +5,11 @@ import { BentoCard } from "@/components/bento-card";
 import { Button } from "@/components/button";
 import { Pill } from "@/components/pill";
 import { UploadModal } from "@/components/upload-modal";
+import { normalizeExternalUrl } from "@/lib/external-url";
 import type { Document } from "@/lib/types";
+import { HERO_CARDS, heroHomeAdminLabel, isHeroCardId } from "@/lib/constants";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  overview: "Overview",
   contextual_compute: "Contextual Compute",
   engineering: "Engineering",
   business: "Business & GTM",
@@ -36,10 +37,20 @@ interface AdminStats {
   topDocs: { title: string; views: number }[];
 }
 
+interface Lead {
+  id: string;
+  email: string;
+  document_id: string;
+  document_title: string;
+  ip_address: string | null;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const [docs, setDocs] = useState<Document[]>([]);
   const [stats, setStats] = useState<AdminStats>({ chatQueries: 0, topDocs: [] });
   const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
 
@@ -53,6 +64,18 @@ export default function AdminDashboard() {
       setDocs([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/leads", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setLeads(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silent
     }
   }, []);
 
@@ -71,7 +94,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDocs();
     fetchStats();
-  }, [fetchDocs, fetchStats]);
+    fetchLeads();
+  }, [fetchDocs, fetchStats, fetchLeads]);
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -103,6 +127,23 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const handleToggleEmailGate = useCallback(async (id: string, current: boolean) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ require_email: !current }),
+      });
+      if (!res.ok) throw new Error("Toggle failed");
+      setDocs((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, require_email: !current } : d))
+      );
+    } catch {
+      // silent
+    }
+  }, []);
+
   const handleReindex = useCallback(async (id: string) => {
     try {
       await fetch("/api/documents/reembed", {
@@ -123,17 +164,21 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-bold tracking-[-0.02em] text-text">
+          <h2 className="text-lg font-bold tracking-[-0.02em] text-text sm:text-[22px]">
             Admin Dashboard
           </h2>
-          <p className="mt-1 text-[13px] text-text-muted">
-            Manage data room documents
+          <p className="mt-1 hidden text-[13px] text-text-muted sm:block">
+            Manage uploads. To use a Zenodo record as the open target from lists, click{" "}
+            <strong className="font-semibold text-text-dim">Edit</strong> and paste the full record URL
+            (e.g. <code className="text-[12px] text-text-muted">https://zenodo.org/records/…</code>).{" "}
+            Assign each home hero tile under <strong className="font-semibold text-text-dim">Home slot</strong>{" "}
+            (one document per slot).
           </p>
         </div>
-        <Button size="md" onClick={() => setShowModal(true)}>
-          + Upload Document
+        <Button size="md" onClick={() => setShowModal(true)} className="w-full sm:w-auto">
+          + Add Document
         </Button>
       </div>
 
@@ -161,6 +206,12 @@ export default function AdminDashboard() {
           <div className="mb-2 text-xs font-medium text-text-muted">Chatbot Questions</div>
           <div className="text-[28px] font-bold tracking-[-0.03em] text-text">
             {stats.chatQueries}
+          </div>
+        </BentoCard>
+        <BentoCard>
+          <div className="mb-2 text-xs font-medium text-text-muted">Email Leads</div>
+          <div className="text-[28px] font-bold tracking-[-0.03em] text-text">
+            {leads.length}
           </div>
         </BentoCard>
       </div>
@@ -212,6 +263,72 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Captured Leads */}
+      {leads.length > 0 && (
+        <div className="mb-8">
+          <BentoCard>
+            <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+              Captured Leads ({leads.length})
+            </h3>
+            {/* Desktop: grid table */}
+            <div className="hidden sm:block">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1.2fr 1.2fr 0.8fr",
+                  gap: 8,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "var(--surface-2)",
+                  marginBottom: 4,
+                }}
+              >
+                {["Email", "Document", "Date"].map((h) => (
+                  <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {h}
+                  </div>
+                ))}
+              </div>
+              {leads.slice(0, 50).map((lead) => (
+                <div
+                  key={lead.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.2fr 1.2fr 0.8fr",
+                    gap: 8,
+                    padding: "10px 12px",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {lead.email}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+                    {lead.document_title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {new Date(lead.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Mobile: stacked cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+              {leads.slice(0, 30).map((lead) => (
+                <div
+                  key={lead.id}
+                  className="rounded-lg border border-border bg-surface-2 px-3.5 py-3"
+                >
+                  <div className="text-[13px] font-medium text-text truncate">{lead.email}</div>
+                  <div className="mt-1 text-[12px] text-text-dim truncate">{lead.document_title}</div>
+                  <div className="mt-0.5 text-[11px] text-text-muted">{new Date(lead.created_at).toLocaleDateString()}</div>
+                </div>
+              ))}
+            </div>
+          </BentoCard>
+        </div>
+      )}
+
       {/* Document Management Table */}
       <BentoCard>
         <h3 className="mb-5 text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -225,28 +342,27 @@ export default function AdminDashboard() {
             No documents uploaded yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            {/* Header */}
+          <>
+          {/* Desktop: wide grid table */}
+          <div className="hidden lg:block overflow-x-auto">
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
+                gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 76px 56px 196px",
                 gap: 8,
                 padding: "10px 16px",
                 borderRadius: 8,
                 background: "var(--surface-2)",
                 marginBottom: 4,
-                minWidth: 780,
+                minWidth: 1120,
               }}
             >
-              {["Document", "Category", "Status", "Embeddings", "Download", "Views", "Actions"].map((h) => (
+              {["Document", "Zenodo", "Category", "Home slot", "Status", "Embeddings", "Download", "Email", "Views", "Actions"].map((h) => (
                 <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {h}
                 </div>
               ))}
             </div>
-
-            {/* Rows */}
             {docs.map((doc) => (
               <DocRow
                 key={doc.id}
@@ -254,10 +370,26 @@ export default function AdminDashboard() {
                 onDelete={() => handleDelete(doc.id)}
                 onReindex={() => handleReindex(doc.id)}
                 onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
+                onToggleEmailGate={() => handleToggleEmailGate(doc.id, doc.require_email)}
                 onEdit={() => setEditingDoc(doc)}
               />
             ))}
           </div>
+          {/* Mobile/tablet: stacked cards */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {docs.map((doc) => (
+              <MobileDocCard
+                key={doc.id}
+                doc={doc}
+                onDelete={() => handleDelete(doc.id)}
+                onReindex={() => handleReindex(doc.id)}
+                onToggleDownload={() => handleToggleDownload(doc.id, doc.allow_download)}
+                onToggleEmailGate={() => handleToggleEmailGate(doc.id, doc.require_email)}
+                onEdit={() => setEditingDoc(doc)}
+              />
+            ))}
+          </div>
+          </>
         )}
       </BentoCard>
 
@@ -295,6 +427,11 @@ function EditModal({
   const [title, setTitle] = useState(doc.title);
   const [description, setDescription] = useState(doc.description ?? "");
   const [category, setCategory] = useState(doc.category);
+  const [homeHeroSlot, setHomeHeroSlot] = useState<string>(
+    doc.home_hero_slot && isHeroCardId(doc.home_hero_slot) ? doc.home_hero_slot : ""
+  );
+  const [requireEmail, setRequireEmail] = useState(doc.require_email ?? false);
+  const [externalUrl, setExternalUrl] = useState(doc.external_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -307,18 +444,34 @@ function EditModal({
       setError("Please select a category.");
       return;
     }
+    if (externalUrl.trim()) {
+      const z = normalizeExternalUrl(externalUrl);
+      if (!z) {
+        setError("Zenodo URL must be a valid https:// link or leave the field empty.");
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     try {
+      const normalized = externalUrl.trim()
+        ? normalizeExternalUrl(externalUrl)
+        : null;
+
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        description: description.trim() || null,
+        category,
+        require_email: requireEmail,
+        home_hero_slot: homeHeroSlot.trim() ? homeHeroSlot.trim() : null,
+        external_url: normalized,
+      };
+
       const res = await fetch(`/api/documents/${doc.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          category,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -346,7 +499,8 @@ function EditModal({
       >
         <h3 className="text-lg font-bold text-text">Edit Document</h3>
         <p className="mb-6 mt-1 text-xs text-text-muted">
-          Update title, description, and category.
+          Update metadata. Add a Zenodo record URL so “Open” from the library goes to that page (PDF
+          stays for AI indexing and the file viewer).
         </p>
 
         <div className="mb-4">
@@ -375,7 +529,7 @@ function EditModal({
             ))}
           </select>
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="mb-1.5 block text-xs font-semibold text-text-dim">
             Description
           </label>
@@ -385,6 +539,70 @@ function EditModal({
             rows={3}
             className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none resize-none"
           />
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Home page hero slot
+          </label>
+          <select
+            value={homeHeroSlot}
+            onChange={(e) => setHomeHeroSlot(e.target.value)}
+            disabled={saving}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          >
+            <option value="">Not shown on home</option>
+            {HERO_CARDS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {heroHomeAdminLabel(c.id)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-muted">
+            Picks which of the six hero tiles opens this document. Only one doc can occupy each slot;
+            assigning here moves any previous doc off that slot.
+          </p>
+        </div>
+
+        <div className="mb-4 flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={requireEmail}
+            onClick={() => setRequireEmail(!requireEmail)}
+            disabled={saving}
+            className="relative h-5 w-9 rounded-full transition-colors"
+            style={{
+              background: requireEmail ? "var(--accent)" : "var(--border)",
+            }}
+          >
+            <span
+              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+              style={{
+                transform: requireEmail ? "translateX(16px)" : "translateX(0)",
+              }}
+            />
+          </button>
+          <label className="text-xs font-medium text-text-dim">
+            Require email to access (lead capture)
+          </label>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">
+            Zenodo / public page URL (optional)
+          </label>
+          <input
+            type="url"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+            disabled={saving}
+            placeholder="https://zenodo.org/records/1234567"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+          <p className="mt-1.5 text-[11px] text-text-muted">
+            Paste the full record link. Leave empty so Open uses the uploaded file (signed URL) instead.
+          </p>
         </div>
 
         {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
@@ -402,17 +620,115 @@ function EditModal({
   );
 }
 
-function DocRow({
+function MobileDocCard({
   doc,
   onDelete,
   onReindex,
   onToggleDownload,
+  onToggleEmailGate,
   onEdit,
 }: {
   doc: Document;
   onDelete: () => void;
   onReindex: () => void;
   onToggleDownload: () => void;
+  onToggleEmailGate: () => void;
+  onEdit: () => void;
+}) {
+  const embStatus = doc.embedding_status ?? "pending";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-2 p-4">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold text-text truncate">{doc.title}</div>
+          <div className="mt-0.5 text-[12px] text-text-dim">
+            {CATEGORY_LABELS[doc.category] ?? doc.category}
+          </div>
+        </div>
+        <Pill variant={doc.status === "published" ? "green" : "amber"}>
+          {doc.status === "published" ? "Published" : doc.status}
+        </Pill>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
+        {doc.external_url && (
+          <span className="text-[11px] font-medium text-accent">Zenodo ✓</span>
+        )}
+        {doc.view_count !== undefined && doc.view_count > 0 && (
+          <span className="text-[11px] text-text-muted">{doc.view_count} views</span>
+        )}
+      </div>
+
+      <div className="mb-3 flex items-center gap-4">
+        <label className="flex items-center gap-2 text-[12px] text-text-dim">
+          <MiniToggle checked={doc.allow_download} onClick={onToggleDownload} />
+          Download
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-text-dim">
+          <MiniToggle checked={doc.require_email} onClick={onToggleEmailGate} />
+          Email gate
+        </label>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
+        <Button variant="ghost" size="sm" onClick={onReindex}>Re-index</Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">Delete</Button>
+      </div>
+    </div>
+  );
+}
+
+function MiniToggle({ checked, onClick }: { checked: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: 30,
+        height: 16,
+        borderRadius: 8,
+        border: "none",
+        cursor: "pointer",
+        background: checked ? "var(--accent)" : "var(--border)",
+        transition: "background 0.2s",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: checked ? 16 : 2,
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          background: "#fff",
+          transition: "left 0.2s",
+        }}
+      />
+    </button>
+  );
+}
+
+function DocRow({
+  doc,
+  onDelete,
+  onReindex,
+  onToggleDownload,
+  onToggleEmailGate,
+  onEdit,
+}: {
+  doc: Document;
+  onDelete: () => void;
+  onReindex: () => void;
+  onToggleDownload: () => void;
+  onToggleEmailGate: () => void;
   onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
@@ -424,21 +740,46 @@ function DocRow({
       onMouseLeave={() => setHov(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1.5fr 1fr 90px 100px 80px 60px 200px",
+        gridTemplateColumns: "1.35fr 52px 0.95fr 120px 88px 96px 76px 76px 56px 196px",
         gap: 8,
         padding: "14px 16px",
         alignItems: "center",
         borderBottom: "1px solid var(--border)",
         background: hov ? "var(--surface-2)" : "transparent",
         transition: "background 0.15s",
-        minWidth: 780,
+        minWidth: 1120,
       }}
     >
-      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>
-        {doc.title}
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{doc.title}</div>
+      <div
+        title={doc.external_url ?? "No public URL — Edit to add Zenodo link"}
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: doc.external_url ? "var(--accent)" : "var(--text-muted)",
+          textAlign: "center",
+        }}
+      >
+        {doc.external_url ? "✓" : "—"}
       </div>
       <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
         {CATEGORY_LABELS[doc.category] ?? doc.category}
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: doc.home_hero_slot ? "var(--accent)" : "var(--text-muted)",
+          lineHeight: 1.35,
+        }}
+        title={
+          doc.home_hero_slot && isHeroCardId(doc.home_hero_slot)
+            ? heroHomeAdminLabel(doc.home_hero_slot)
+            : undefined
+        }
+      >
+        {doc.home_hero_slot && isHeroCardId(doc.home_hero_slot)
+          ? HERO_CARDS.find((c) => c.id === doc.home_hero_slot)?.title ?? "—"
+          : "—"}
       </div>
       <div>
         <Pill variant={doc.status === "published" ? "green" : "amber"}>
@@ -446,9 +787,7 @@ function DocRow({
         </Pill>
       </div>
       <div title={doc.embedding_error ?? undefined}>
-        <Pill variant={embeddingVariant(embStatus)}>
-          {embeddingLabel(embStatus)}
-        </Pill>
+        <Pill variant={embeddingVariant(embStatus)}>{embeddingLabel(embStatus)}</Pill>
       </div>
       <div>
         <button
@@ -472,6 +811,37 @@ function DocRow({
               position: "absolute",
               top: 2,
               left: doc.allow_download ? 18 : 2,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "#fff",
+              transition: "left 0.2s",
+            }}
+          />
+        </button>
+      </div>
+      <div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={doc.require_email}
+          onClick={onToggleEmailGate}
+          style={{
+            position: "relative",
+            width: 34,
+            height: 18,
+            borderRadius: 9,
+            border: "none",
+            cursor: "pointer",
+            background: doc.require_email ? "var(--accent)" : "var(--border)",
+            transition: "background 0.2s",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              top: 2,
+              left: doc.require_email ? 18 : 2,
               width: 14,
               height: 14,
               borderRadius: "50%",

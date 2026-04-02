@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminRequest } from "@/lib/auth-admin";
 import { extractText, embedAndStore } from "@/lib/embeddings";
+import { normalizeExternalUrl } from "@/lib/external-url";
+import { isHeroCardId } from "@/lib/constants";
+import { clearOtherDocumentsHeroSlot } from "@/lib/documents-hero-slot";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -44,30 +47,79 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();
-  const { title, description, category, file_url, file_type, status, allow_download } = body;
+  const {
+    title,
+    description,
+    category,
+    file_url,
+    external_url: rawExternal,
+    file_type,
+    status,
+    allow_download,
+    require_email,
+    home_hero_slot: rawHomeSlot,
+  } = body;
   if (!title || !category) {
     return NextResponse.json({ error: "title and category required" }, { status: 400 });
   }
+
+  const filePath =
+    typeof file_url === "string" && file_url.trim() ? file_url.trim() : null;
+  const externalUrl =
+    typeof rawExternal === "string" ? normalizeExternalUrl(rawExternal) : null;
+
+  if (!filePath && !externalUrl) {
+    return NextResponse.json(
+      { error: "Provide file_url (after upload) or a valid external_url (https://…)" },
+      { status: 400 }
+    );
+  }
+
+  const resolvedFileType = filePath
+    ? (file_type ?? "PDF")
+    : typeof file_type === "string" && file_type.trim()
+      ? file_type.trim()
+      : "Link";
+
+  let homeHeroSlot: string | null = null;
+  if (rawHomeSlot !== undefined && rawHomeSlot !== null && String(rawHomeSlot).trim() !== "") {
+    const slot = String(rawHomeSlot).trim();
+    if (!isHeroCardId(slot)) {
+      return NextResponse.json({ error: "Invalid home_hero_slot" }, { status: 400 });
+    }
+    homeHeroSlot = slot;
+  }
+
   const admin = createAdminClient();
+  if (homeHeroSlot) {
+    await clearOtherDocumentsHeroSlot(admin, homeHeroSlot);
+  }
+
   const { data, error } = await admin
     .from("documents")
     .insert({
       title,
       description: description ?? null,
       category,
-      file_url: file_url ?? null,
-      file_type: file_type ?? "PDF",
+      file_url: filePath,
+      external_url: externalUrl,
+      file_type: resolvedFileType,
       status: status ?? "published",
       allow_download: allow_download ?? true,
+      require_email: require_email ?? false,
+      show_on_overview: !!homeHeroSlot,
+      home_hero_slot: homeHeroSlot,
       uploaded_by: null,
+      embedding_status: filePath ? "pending" : "completed",
+      embedding_error: null,
     })
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Trigger embedding in the background — download file from storage, extract text, embed
-  if (data && file_url) {
-    embedDocument(data.id, file_url, file_type ?? "PDF").catch((err) =>
+  // Trigger embedding in the background — storage file only
+  if (data && filePath) {
+    embedDocument(data.id, filePath, resolvedFileType).catch((err) =>
       console.error("Embedding failed for document", data.id, err)
     );
   }

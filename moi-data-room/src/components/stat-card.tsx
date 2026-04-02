@@ -41,9 +41,9 @@ export function StatCardsGrid() {
       {STATS.map((stat) => (
         <div
           key={stat.label}
+          className="p-3 sm:p-[16px_18px]"
           style={{
             background: "var(--surface)",
-            padding: "16px 18px",
             gridColumn: stat.label === "KMOI TVL" ? "span 2" : undefined,
           }}
         >
@@ -57,8 +57,8 @@ export function StatCardsGrid() {
             {stat.label}
           </div>
           <div
+            className="text-[17px] sm:text-[20px]"
             style={{
-              fontSize: 20,
               fontWeight: 500,
               color: "var(--text)",
               marginBottom: 6,

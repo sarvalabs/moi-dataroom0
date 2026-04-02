@@ -32,6 +32,7 @@ create table public.documents (
   description text,
   category text not null check (category in ('overview', 'contextual_compute', 'engineering', 'business', 'tokenomics', 'research', 'usecases')),
   file_url text,
+  external_url text,
   file_type text default 'PDF',
   status text default 'published' check (status in ('published', 'draft', 'restricted')),
   embedding_status text default 'pending' check (embedding_status in ('pending', 'processing', 'completed', 'failed')),
