@@ -21,7 +21,7 @@ function AdopterRow({ adopter, delay }: { adopter: Adopter; delay: number }) {
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 2fr auto",
-        alignItems: "center",
+        alignItems: "start",
         gap: 16,
         padding: "14px 18px",
         borderRadius: 10,
@@ -48,8 +48,10 @@ function AdopterRow({ adopter, delay }: { adopter: Adopter; delay: number }) {
           fontSize: 13,
           color: "var(--text-dim)",
           overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          lineHeight: "1.5",
         }}
       >
         {adopter.description ?? "—"}
