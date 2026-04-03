@@ -86,37 +86,45 @@ export default function AdminDashboard() {
       const lines = text.split(/\r?\n/).filter((l) => l.trim());
       if (lines.length < 2) return;
 
+      // Auto-detect delimiter: tab or comma
+      const delimiter = lines[0].includes("\t") ? "\t" : ",";
+
       // Parse header to find column indices
-      const header = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ""));
-      const nameIdx = header.findIndex((h) => h === "name");
+      const header = lines[0].split(delimiter).map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ""));
+      const nameIdx = header.findIndex((h) => h === "name" || h === "project name");
       const descIdx = header.findIndex((h) => h === "description" || h === "desc");
       const linkIdx = header.findIndex((h) => h === "link" || h === "url" || h === "website");
       const typeIdx = header.findIndex((h) => h === "type");
 
       if (nameIdx === -1) {
-        alert("CSV must have a 'name' column.");
+        alert("File must have a 'Name' or 'Project Name' column.");
         return;
       }
 
       const rows = lines.slice(1);
       let added = 0;
       for (const row of rows) {
-        // Simple CSV parse (handles quoted fields with commas)
-        const cols: string[] = [];
-        let current = "";
-        let inQuotes = false;
-        for (const ch of row) {
-          if (ch === '"') { inQuotes = !inQuotes; continue; }
-          if (ch === "," && !inQuotes) { cols.push(current.trim()); current = ""; continue; }
-          current += ch;
+        // Parse row: for TSV use simple split, for CSV handle quoted fields
+        let cols: string[];
+        if (delimiter === "\t") {
+          cols = row.split("\t").map((c) => c.trim().replace(/^"|"$/g, ""));
+        } else {
+          cols = [];
+          let current = "";
+          let inQuotes = false;
+          for (const ch of row) {
+            if (ch === '"') { inQuotes = !inQuotes; continue; }
+            if (ch === "," && !inQuotes) { cols.push(current.trim()); current = ""; continue; }
+            current += ch;
+          }
+          cols.push(current.trim());
         }
-        cols.push(current.trim());
 
         const name = cols[nameIdx]?.trim();
         if (!name) continue;
 
-        const rawType = typeIdx >= 0 ? cols[typeIdx]?.trim().toLowerCase() : "business";
-        const type = rawType === "dapp" || rawType === "dapps" ? "dapp" : "business";
+        const rawType = typeIdx >= 0 ? cols[typeIdx]?.trim().toLowerCase() : "dapp";
+        const type = rawType === "business" ? "business" : "dapp";
 
         const res = await fetch("/api/adopters", {
           method: "POST",
@@ -507,7 +515,7 @@ export default function AdminDashboard() {
                 {csvImporting ? "Importing…" : "Import CSV"}
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.tsv,.txt"
                   className="hidden"
                   disabled={csvImporting}
                   onChange={(e) => {
