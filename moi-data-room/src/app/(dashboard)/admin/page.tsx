@@ -9,6 +9,15 @@ import { normalizeExternalUrl } from "@/lib/external-url";
 import type { Document } from "@/lib/types";
 import { HERO_CARDS, heroHomeAdminLabel, isHeroCardId } from "@/lib/constants";
 
+interface Adopter {
+  id: string;
+  name: string;
+  description: string | null;
+  link: string | null;
+  type: "business" | "dapp";
+  created_at: string;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   contextual_compute: "Contextual Compute",
   engineering: "Engineering",
@@ -53,6 +62,33 @@ export default function AdminDashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+  const [adopters, setAdopters] = useState<Adopter[]>([]);
+  const [showAdopterModal, setShowAdopterModal] = useState(false);
+  const [editingAdopter, setEditingAdopter] = useState<Adopter | null>(null);
+
+  const fetchAdopters = useCallback(async () => {
+    try {
+      const res = await fetch("/api/adopters", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setAdopters(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const handleDeleteAdopter = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/adopters/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) setAdopters((prev) => prev.filter((a) => a.id !== id));
+    } catch {
+      // silent
+    }
+  }, []);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -95,7 +131,8 @@ export default function AdminDashboard() {
     fetchDocs();
     fetchStats();
     fetchLeads();
-  }, [fetchDocs, fetchStats, fetchLeads]);
+    fetchAdopters();
+  }, [fetchDocs, fetchStats, fetchLeads, fetchAdopters]);
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -393,6 +430,80 @@ export default function AdminDashboard() {
         )}
       </BentoCard>
 
+      {/* Adopters Management */}
+      <div className="mt-8">
+        <BentoCard>
+          <div className="mb-5 flex items-center justify-between">
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+              Adopters Management
+            </h3>
+            <Button size="sm" onClick={() => setShowAdopterModal(true)}>
+              + Add Adopter
+            </Button>
+          </div>
+
+          {adopters.length === 0 ? (
+            <div className="py-8 text-center text-[13px] text-text-muted">
+              No adopters added yet.
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden sm:block">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 0.6fr 1.5fr 1fr 120px",
+                    gap: 8,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "var(--surface-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {["Name", "Type", "Description", "Link", "Actions"].map((h) => (
+                    <div key={h} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {h}
+                    </div>
+                  ))}
+                </div>
+                {adopters.map((adopter) => (
+                  <AdopterAdminRow
+                    key={adopter.id}
+                    adopter={adopter}
+                    onEdit={() => setEditingAdopter(adopter)}
+                    onDelete={() => handleDeleteAdopter(adopter.id)}
+                  />
+                ))}
+              </div>
+              {/* Mobile cards */}
+              <div className="flex flex-col gap-3 sm:hidden">
+                {adopters.map((adopter) => (
+                  <div
+                    key={adopter.id}
+                    className="rounded-lg border border-border bg-surface-2 px-3.5 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[14px] font-semibold text-text truncate">{adopter.name}</div>
+                      <Pill variant={adopter.type === "business" ? "green" : "amber"}>
+                        {adopter.type === "business" ? "Business" : "dApp"}
+                      </Pill>
+                    </div>
+                    {adopter.description && (
+                      <div className="mt-1 text-[12px] text-text-dim truncate">{adopter.description}</div>
+                    )}
+                    <div className="mt-2 flex gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingAdopter(adopter)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteAdopter(adopter.id)} className="!text-[#F87171]">Delete</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </BentoCard>
+      </div>
+
       {showModal && (
         <UploadModal
           onClose={() => setShowModal(false)}
@@ -409,6 +520,17 @@ export default function AdminDashboard() {
               prev.map((d) => (d.id === updated.id ? updated : d))
             );
           }}
+        />
+      )}
+
+      {(showAdopterModal || editingAdopter) && (
+        <AdopterModal
+          adopter={editingAdopter}
+          onClose={() => {
+            setShowAdopterModal(false);
+            setEditingAdopter(null);
+          }}
+          onSaved={fetchAdopters}
         />
       )}
     </div>
@@ -864,6 +986,190 @@ function DocRow({
         <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">
           Delete
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function AdopterAdminRow({
+  adopter,
+  onEdit,
+  onDelete,
+}: {
+  adopter: Adopter;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [hov, setHov] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 0.6fr 1.5fr 1fr 120px",
+        gap: 8,
+        padding: "10px 12px",
+        alignItems: "center",
+        borderBottom: "1px solid var(--border)",
+        background: hov ? "var(--surface-2)" : "transparent",
+        transition: "background 0.15s",
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {adopter.name}
+      </div>
+      <div>
+        <Pill variant={adopter.type === "business" ? "green" : "amber"}>
+          {adopter.type === "business" ? "Business" : "dApp"}
+        </Pill>
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {adopter.description ?? "—"}
+      </div>
+      <div style={{ fontSize: 12, color: adopter.link ? "var(--accent)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {adopter.link ? adopter.link.replace(/^https?:\/\//, "") : "—"}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AdopterModal({
+  adopter,
+  onClose,
+  onSaved,
+}: {
+  adopter: Adopter | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!adopter;
+  const [name, setName] = useState(adopter?.name ?? "");
+  const [description, setDescription] = useState(adopter?.description ?? "");
+  const [link, setLink] = useState(adopter?.link ?? "");
+  const [type, setType] = useState<"business" | "dapp">(adopter?.type ?? "business");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setError("Name is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        name: name.trim(),
+        description: description.trim() || null,
+        link: link.trim() || null,
+        type,
+      };
+
+      const url = isEdit ? `/api/adopters/${adopter.id}` : "/api/adopters";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Save failed");
+      }
+
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-[4px]"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-[440px] max-w-[90vw] rounded-2xl border border-border bg-surface p-8"
+      >
+        <h3 className="text-lg font-bold text-text">
+          {isEdit ? "Edit Adopter" : "Add Adopter"}
+        </h3>
+        <p className="mb-6 mt-1 text-xs text-text-muted">
+          {isEdit ? "Update adopter details." : "Add a new business or dApp to the adopters page."}
+        </p>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Company or dApp name"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Type</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as "business" | "dapp")}
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          >
+            <option value="business">Business</option>
+            <option value="dapp">dApp</option>
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Brief description"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none resize-none"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Link (optional)</label>
+          <input
+            type="url"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="https://example.com"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
+
+        <div className="flex justify-end gap-2.5">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Save" : "Add"}
+          </Button>
+        </div>
       </div>
     </div>
   );

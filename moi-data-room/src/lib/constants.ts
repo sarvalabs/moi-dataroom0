@@ -32,6 +32,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "tokenomics", label: "Tokenomics", icon: "◉", href: "/tokenomics" },
   { id: "business", label: "Business & GTM", icon: "◧", href: "/business" },
   { id: "research", label: "Research", icon: "◬", href: "/research" },
+  { id: "adopters", label: "Adopters", icon: "◈", href: "/adopters" },
 ] as const;
 
 export const STATS = [
