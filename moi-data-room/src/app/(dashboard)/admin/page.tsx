@@ -65,6 +65,7 @@ export default function AdminDashboard() {
   const [adopters, setAdopters] = useState<Adopter[]>([]);
   const [showAdopterModal, setShowAdopterModal] = useState(false);
   const [editingAdopter, setEditingAdopter] = useState<Adopter | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
 
   const fetchAdopters = useCallback(async () => {
     try {
@@ -77,6 +78,68 @@ export default function AdminDashboard() {
       // silent
     }
   }, []);
+
+  const handleCsvImport = useCallback(async (file: File) => {
+    setCsvImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) return;
+
+      // Parse header to find column indices
+      const header = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ""));
+      const nameIdx = header.findIndex((h) => h === "name");
+      const descIdx = header.findIndex((h) => h === "description" || h === "desc");
+      const linkIdx = header.findIndex((h) => h === "link" || h === "url" || h === "website");
+      const typeIdx = header.findIndex((h) => h === "type");
+
+      if (nameIdx === -1) {
+        alert("CSV must have a 'name' column.");
+        return;
+      }
+
+      const rows = lines.slice(1);
+      let added = 0;
+      for (const row of rows) {
+        // Simple CSV parse (handles quoted fields with commas)
+        const cols: string[] = [];
+        let current = "";
+        let inQuotes = false;
+        for (const ch of row) {
+          if (ch === '"') { inQuotes = !inQuotes; continue; }
+          if (ch === "," && !inQuotes) { cols.push(current.trim()); current = ""; continue; }
+          current += ch;
+        }
+        cols.push(current.trim());
+
+        const name = cols[nameIdx]?.trim();
+        if (!name) continue;
+
+        const rawType = typeIdx >= 0 ? cols[typeIdx]?.trim().toLowerCase() : "business";
+        const type = rawType === "dapp" || rawType === "dapps" ? "dapp" : "business";
+
+        const res = await fetch("/api/adopters", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name,
+            description: descIdx >= 0 ? cols[descIdx]?.trim() || null : null,
+            link: linkIdx >= 0 ? cols[linkIdx]?.trim() || null : null,
+            type,
+          }),
+        });
+        if (res.ok) added++;
+      }
+
+      if (added > 0) fetchAdopters();
+      alert(`Imported ${added} of ${rows.length} adopters.`);
+    } catch {
+      alert("Failed to parse CSV.");
+    } finally {
+      setCsvImporting(false);
+    }
+  }, [fetchAdopters]);
 
   const handleDeleteAdopter = useCallback(async (id: string) => {
     try {
@@ -437,9 +500,27 @@ export default function AdminDashboard() {
             <h3 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
               Adopters Management
             </h3>
-            <Button size="sm" onClick={() => setShowAdopterModal(true)}>
-              + Add Adopter
-            </Button>
+            <div className="flex gap-2">
+              <label
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-transparent px-3.5 py-1.5 text-xs font-semibold tracking-[0.01em] text-text-dim cursor-pointer transition-all duration-200 hover:bg-accent-dim hover:text-accent hover:border-accent"
+              >
+                {csvImporting ? "Importing…" : "Import CSV"}
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  disabled={csvImporting}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvImport(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <Button size="sm" onClick={() => setShowAdopterModal(true)}>
+                + Add Adopter
+              </Button>
+            </div>
           </div>
 
           {adopters.length === 0 ? (
