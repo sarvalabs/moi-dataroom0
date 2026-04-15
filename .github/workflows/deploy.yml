@@ -2,7 +2,7 @@ name: Deploy MOI Dataroom
 
 on:
   push:
-    branches: [chore/cicd-workflows]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
