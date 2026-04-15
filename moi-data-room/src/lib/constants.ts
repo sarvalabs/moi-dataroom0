@@ -26,6 +26,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "home", label: "Home", icon: "⌂", href: "/home" },
+  { id: "events", label: "Events", icon: "▦", href: "/events" },
   { id: "contextual_compute", label: "Contextual Compute", icon: "⬡", href: "/contextual-compute" },
   { id: "engineering", label: "Engineering", icon: "⚙", href: "/engineering" },
   { id: "usecases", label: "Use Cases", icon: "◫", href: "/usecases" },

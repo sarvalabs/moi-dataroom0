@@ -8,6 +8,7 @@ import { UploadModal } from "@/components/upload-modal";
 import { normalizeExternalUrl } from "@/lib/external-url";
 import type { Document } from "@/lib/types";
 import { HERO_CARDS, heroHomeAdminLabel, isHeroCardId } from "@/lib/constants";
+import type { CalendarEventRow } from "@/lib/events";
 
 interface Adopter {
   id: string;
@@ -66,6 +67,9 @@ export default function AdminDashboard() {
   const [showAdopterModal, setShowAdopterModal] = useState(false);
   const [editingAdopter, setEditingAdopter] = useState<Adopter | null>(null);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventRow[]>([]);
+  const [showCalendarEventModal, setShowCalendarEventModal] = useState(false);
+  const [editingCalendarEvent, setEditingCalendarEvent] = useState<CalendarEventRow | null>(null);
 
   const fetchAdopters = useCallback(async () => {
     try {
@@ -74,6 +78,30 @@ export default function AdminDashboard() {
         const data = await res.json();
         setAdopters(Array.isArray(data) ? data : []);
       }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const fetchCalendarEvents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/events", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarEvents(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const handleDeleteCalendarEvent = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/events/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) setCalendarEvents((prev) => prev.filter((e) => e.id !== id));
     } catch {
       // silent
     }
@@ -203,7 +231,8 @@ export default function AdminDashboard() {
     fetchStats();
     fetchLeads();
     fetchAdopters();
-  }, [fetchDocs, fetchStats, fetchLeads, fetchAdopters]);
+    fetchCalendarEvents();
+  }, [fetchDocs, fetchStats, fetchLeads, fetchAdopters, fetchCalendarEvents]);
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -501,6 +530,106 @@ export default function AdminDashboard() {
         )}
       </BentoCard>
 
+      {/* Calendar events */}
+      <div className="mt-8">
+        <BentoCard>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+              Calendar events
+            </h3>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingCalendarEvent(null);
+                setShowCalendarEventModal(true);
+              }}
+            >
+              + Add event
+            </Button>
+          </div>
+          <p className="mb-4 text-[12px] text-text-muted">
+            Shown on the public <strong className="font-semibold text-text-dim">Events</strong> page.
+            Run the SQL migration <code className="text-[11px] text-text-muted">migration-add-calendar-events.sql</code> in
+            Supabase if the table is missing.
+          </p>
+
+          {calendarEvents.length === 0 ? (
+            <div className="py-8 text-center text-[13px] text-text-muted">
+              No events yet. Add one or run the calendar migration.
+            </div>
+          ) : (
+            <>
+              <div className="hidden sm:block">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.2fr 100px 100px 1fr 120px",
+                    gap: 8,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "var(--surface-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {["Title", "Start", "End", "Location", "Actions"].map((h) => (
+                    <div
+                      key={h}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--text-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {h}
+                    </div>
+                  ))}
+                </div>
+                {calendarEvents.map((ev) => (
+                  <CalendarEventAdminRow
+                    key={ev.id}
+                    event={ev}
+                    onEdit={() => setEditingCalendarEvent(ev)}
+                    onDelete={() => handleDeleteCalendarEvent(ev.id)}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-col gap-3 sm:hidden">
+                {calendarEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="rounded-lg border border-border bg-surface-2 px-3.5 py-3"
+                  >
+                    <div className="text-[14px] font-semibold text-text">{ev.title}</div>
+                    <div className="mt-1 text-[12px] text-text-dim">
+                      {ev.start_date}
+                      {ev.end_date && ev.end_date !== ev.start_date ? ` → ${ev.end_date}` : ""}
+                    </div>
+                    {ev.location && (
+                      <div className="mt-0.5 text-[12px] text-text-muted truncate">{ev.location}</div>
+                    )}
+                    <div className="mt-2 flex gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingCalendarEvent(ev)}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCalendarEvent(ev.id)}
+                        className="!text-[#F87171]"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </BentoCard>
+      </div>
+
       {/* Adopters Management */}
       <div className="mt-8">
         <BentoCard>
@@ -620,6 +749,18 @@ export default function AdminDashboard() {
             setEditingAdopter(null);
           }}
           onSaved={fetchAdopters}
+        />
+      )}
+
+      {(showCalendarEventModal || editingCalendarEvent) && (
+        <CalendarEventModal
+          key={editingCalendarEvent?.id ?? "new"}
+          event={editingCalendarEvent}
+          onClose={() => {
+            setShowCalendarEventModal(false);
+            setEditingCalendarEvent(null);
+          }}
+          onSaved={fetchCalendarEvents}
         />
       )}
     </div>
@@ -1127,6 +1268,234 @@ function AdopterAdminRow({
         <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">
           Delete
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function CalendarEventAdminRow({
+  event,
+  onEdit,
+  onDelete,
+}: {
+  event: CalendarEventRow;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [hov, setHov] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1.2fr 100px 100px 1fr 120px",
+        gap: 8,
+        padding: "10px 12px",
+        alignItems: "center",
+        borderBottom: "1px solid var(--border)",
+        background: hov ? "var(--surface-2)" : "transparent",
+        transition: "background 0.15s",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          color: "var(--text)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {event.title}
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{event.start_date}</div>
+      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+        {event.end_date && event.end_date !== event.start_date ? event.end_date : "—"}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: "var(--text-dim)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {event.location ?? "—"}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDelete} className="!text-[#F87171]">
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function newEventStartYmd(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function CalendarEventModal({
+  event,
+  onClose,
+  onSaved,
+}: {
+  event: CalendarEventRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!event;
+  const [title, setTitle] = useState(event?.title ?? "");
+  const [startDate, setStartDate] = useState(event?.start_date ?? newEventStartYmd());
+  const [endDate, setEndDate] = useState(event?.end_date ?? "");
+  const [description, setDescription] = useState(event?.description ?? "");
+  const [href, setHref] = useState(event?.href ?? "");
+  const [location, setLocation] = useState(event?.location ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    if (!startDate.trim()) {
+      setError("Start date is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        start_date: startDate.trim(),
+        end_date: endDate.trim() || null,
+        description: description.trim() || null,
+        href: href.trim() || null,
+        location: location.trim() || null,
+      };
+
+      const url = isEdit ? `/api/events/${event.id}` : "/api/events";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Save failed");
+      }
+
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-[4px]"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[90vh] w-[440px] max-w-[90vw] overflow-y-auto rounded-2xl border border-border bg-surface p-8"
+      >
+        <h3 className="text-lg font-bold text-text">
+          {isEdit ? "Edit event" : "Add event"}
+        </h3>
+        <p className="mb-6 mt-1 text-xs text-text-muted">
+          Appears on the Events calendar for all data room visitors.
+        </p>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Title</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Community AMA"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">Start date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-text-dim">End date (optional)</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Location (optional)</label>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="City or Video call"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Description (optional)</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-semibold text-text-dim">Link (optional)</label>
+          <input
+            type="url"
+            value={href}
+            onChange={(e) => setHref(e.target.value)}
+            placeholder="https://"
+            className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-sans text-[13px] text-text outline-none"
+          />
+        </div>
+
+        {error && <p className="mb-4 text-xs text-[#F87171]">{error}</p>}
+
+        <div className="flex justify-end gap-2.5">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Save" : "Add"}
+          </Button>
+        </div>
       </div>
     </div>
   );
