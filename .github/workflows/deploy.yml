@@ -2,7 +2,7 @@ name: Deploy MOI Dataroom
 
 on:
   push:
-    branches: [main]
+    branches: [ci/cicd-workflows]
   workflow_dispatch:
 
 jobs:
@@ -25,32 +25,4 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           envs: NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,ANTHROPIC_API_KEY,OPENAI_API_KEY,ADMIN_SECRET
           script: |
-            cd ~/moi-dataroom0/moi-data-room
-
-            echo "Stopping service..."
-            pm2 stop moi-dataroom || true
-
-            echo "Syncing latest code..."
-            git fetch origin main
-            git reset --hard origin/main
-
-            echo "Creating env file.."
-            cat > .env.local << EOF
-            NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-            SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-            ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-            OPENAI_API_KEY=${OPENAI_API_KEY}
-            ADMIN_SECRET=${ADMIN_SECRET}
-            EOF
-
-            echo "Installing dependencies..."
-            npm install
-
-            echo "Building app..."
-            npm run build
-
-            echo "Restarting service..."
-            pm2 start npm --name moi-dataroom -- start || pm2 restart moi-dataroom
-
-            pm2 save
+            bash /root/scripts/deploy-moi-dataroom.sh
