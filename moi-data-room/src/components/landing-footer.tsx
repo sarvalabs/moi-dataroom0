@@ -15,7 +15,7 @@ const SOCIAL_LINKS: {
     ),
   },
   {
-    href: "https://discord.gg/ytQGU7ZP",
+    href: "https://discord.com/invite/4mUq3GeBMx",
     label: "Discord",
     svg: (
       <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
