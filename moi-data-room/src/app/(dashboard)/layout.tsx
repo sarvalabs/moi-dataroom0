@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { ChatBot } from "@/components/chat-widget";
 import { NAV_ITEMS, type NavItem } from "@/lib/constants";
 import { useMobileMenu } from "@/lib/use-mobile-menu";
 
@@ -92,7 +91,6 @@ export default function DashboardLayout({
           {children}
         </div>
       </div>
-      <ChatBot />
     </div>
   );
 }
