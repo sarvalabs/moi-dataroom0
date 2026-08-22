@@ -421,7 +421,7 @@ export default function HomePage() {
           />
         ))}
       </div>
-      <div className="mb-8 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4 md:mb-12">
+      <div className="mb-8 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 md:mb-12">
         {row2.map((card) => (
           <AssetCard
             key={card.id}
