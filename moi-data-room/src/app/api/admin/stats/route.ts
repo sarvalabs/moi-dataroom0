@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cookies } from "next/headers";
+import { hasAdminCookie } from "@/lib/auth-admin";
 
 export async function GET() {
-  const jar = await cookies();
-  const token = jar.get("admin_token")?.value;
-  if (token !== process.env.ADMIN_TOKEN && token !== "MOI-dataroom123$") {
+  if (!(await hasAdminCookie())) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
